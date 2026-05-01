@@ -55,3 +55,31 @@ export async function getProfile(): Promise<UserProfile> {
 export async function setProfile(profile: UserProfile): Promise<void> {
   await setMeta('profile', profile);
 }
+
+// ─── Onboarding ───────────────────────────────────────────────────────────────
+
+export async function getOnboardingDone(): Promise<boolean> {
+  const v = await getMeta<boolean>('onboarding_done');
+  return v === true;
+}
+
+export async function setOnboardingDone(): Promise<void> {
+  await setMeta('onboarding_done', true);
+}
+
+// ─── Sync meta ────────────────────────────────────────────────────────────────
+
+export interface SyncMeta {
+  email: string;
+  name: string;
+  lastSync: number | null;
+}
+
+export async function getSyncMeta(): Promise<SyncMeta | null> {
+  const v = await getMeta<SyncMeta>('sync');
+  return v ?? null;
+}
+
+export async function setSyncMeta(s: SyncMeta | null): Promise<void> {
+  await setMeta('sync', s);
+}

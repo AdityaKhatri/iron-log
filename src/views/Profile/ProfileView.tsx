@@ -6,7 +6,11 @@ import { getAllSessions } from '../../db/sessions';
 import { getAllExercises } from '../../db/exercises';
 import { estimated1RM } from '../../lib/epley';
 import { today } from '../../lib/date';
+import { useSyncContext } from '../../context/SyncContext';
+import { exportToBackup, mergeFromBackup } from '../../lib/sync';
+import { getDb } from '../../db/connection';
 import type { UserProfile, Bodyweight, Exercise, Session } from '../../types';
+import type { BackupData } from '../../lib/sync';
 import './Profile.css';
 
 const TODAY = today();
@@ -272,8 +276,200 @@ export function ProfileView() {
           )}
         </section>
 
+        {/* ── Settings ── */}
+        <SettingsSection />
+
       </div>
     </div>
+  );
+}
+
+// ─── Settings Section ─────────────────────────────────────────────────────────
+
+function SettingsSection() {
+  const { account, syncing, lastSync, error, connect, disconnect, syncNow, clearError } = useSyncContext();
+  const [importError, setImportError] = useState<string | null>(null);
+  const [wipePending, setWipePending] = useState(false);
+  const driveConfigured = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined);
+
+  function formatLastSync(ts: number | null): string {
+    if (!ts) return 'Never';
+    const d = new Date(ts);
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  async function handleExport() {
+    try {
+      const backup = await exportToBackup();
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `iron-log-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Export failed');
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text) as BackupData;
+      await mergeFromBackup(data);
+      alert('Import complete. Reload the app to see changes.');
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed');
+    }
+    // Reset file input
+    e.target.value = '';
+  }
+
+  async function handleWipe() {
+    if (!wipePending) {
+      setWipePending(true);
+      return;
+    }
+    try {
+      const stores = ['exercises', 'workouts', 'plan', 'sessions', 'bodyweight', 'meta'];
+      const db = await getDb();
+      await Promise.all(stores.map(store =>
+        new Promise<void>((resolve, reject) => {
+          const req = db.transaction(store, 'readwrite').objectStore(store).clear();
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        })
+      ));
+      window.location.reload();
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Wipe failed');
+    }
+  }
+
+  return (
+    <section className="profile-section">
+      <div className="profile-section-label">Settings</div>
+
+      {/* ── Sync & Backup ── */}
+      {driveConfigured && (
+        <>
+          <div className="profile-settings-group-label">Sync &amp; Backup</div>
+          <div className="profile-card" style={{ marginBottom: 16 }}>
+            {account ? (
+              <>
+                <div className="profile-field">
+                  <span className="profile-field-label">Account</span>
+                  <div className="profile-field-value" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--fg)' }}>{account.email}</span>
+                    <span className="profile-field-hint">Last sync: {formatLastSync(lastSync)}</span>
+                  </div>
+                </div>
+                {error && (
+                  <div className="profile-sync-error">
+                    <span>{error}</span>
+                    <button className="btn ghost btn-sm" onClick={clearError}>✕</button>
+                  </div>
+                )}
+                <div className="profile-field last" style={{ gap: 8, justifyContent: 'flex-end' }}>
+                  <button
+                    className="btn outline btn-sm"
+                    onClick={syncNow}
+                    disabled={syncing}
+                  >
+                    {syncing ? 'Syncing…' : 'Sync Now'}
+                  </button>
+                  <button
+                    className="btn ghost btn-sm"
+                    onClick={disconnect}
+                    style={{ color: 'var(--fg-mute)' }}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="profile-field last">
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--fg)', marginBottom: 4 }}>
+                    Google Drive
+                  </div>
+                  <div className="profile-field-hint">Back up your data across devices</div>
+                </div>
+                <button
+                  className="btn primary btn-sm"
+                  onClick={connect}
+                  disabled={syncing}
+                >
+                  {syncing ? 'Connecting…' : 'Connect'}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {!driveConfigured && (
+        <>
+          <div className="profile-settings-group-label">Sync &amp; Backup</div>
+          <div className="profile-card" style={{ marginBottom: 16 }}>
+            <div className="profile-field last">
+              <span className="profile-field-hint">Drive sync not configured.</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Data ── */}
+      <div className="profile-settings-group-label">Data</div>
+      <div className="profile-card" style={{ marginBottom: 16 }}>
+        <div className="profile-field">
+          <span className="profile-field-label">Export</span>
+          <div className="profile-field-value">
+            <button className="btn outline btn-sm" onClick={handleExport}>
+              Export JSON
+            </button>
+          </div>
+        </div>
+        <div className="profile-field">
+          <span className="profile-field-label">Import</span>
+          <div className="profile-field-value">
+            <label className="btn outline btn-sm" style={{ cursor: 'pointer' }}>
+              Import JSON
+              <input
+                type="file"
+                accept=".json,application/json"
+                style={{ display: 'none' }}
+                onChange={handleImport}
+              />
+            </label>
+          </div>
+        </div>
+        <div className="profile-field last">
+          <span className="profile-field-label">Wipe All Data</span>
+          <div className="profile-field-value">
+            <button
+              className={`btn btn-sm${wipePending ? ' primary' : ' ghost'}`}
+              onClick={handleWipe}
+              style={wipePending ? { background: 'var(--color-danger)', borderColor: 'var(--color-danger)' } : { color: 'var(--fg-mute)' }}
+              onBlur={() => setWipePending(false)}
+            >
+              {wipePending ? 'Confirm wipe' : 'Wipe'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {importError && (
+        <div className="profile-sync-error" style={{ marginBottom: 12 }}>
+          <span>{importError}</span>
+          <button className="btn ghost btn-sm" onClick={() => setImportError(null)}>✕</button>
+        </div>
+      )}
+    </section>
   );
 }
 
