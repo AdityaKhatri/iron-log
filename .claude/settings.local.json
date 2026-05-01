@@ -16,7 +16,9 @@
       "Bash(tar -xf /tmp/ironlog -C /tmp/)",
       "Bash(mkdir -p /tmp/ironlog-out)",
       "Bash(tar -xf /tmp/ironlog -C /tmp/ironlog-out)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(rsvg-convert -w 512 -h 512 /tmp/icon.svg -o /home/aditya/Projects/iron-log/public/icons/icon-512.png)",
+      "Bash(rsvg-convert -w 192 -h 192 /tmp/icon.svg -o /home/aditya/Projects/iron-log/public/icons/icon-192.png)"
     ]
   }
 }

@@ -2,13 +2,16 @@
   "name": "IronLog",
   "short_name": "IronLog",
   "description": "Plan strength workouts and track progress",
-  "start_url": "/",
+  "start_url": "/iron-log/",
+  "scope": "/iron-log/",
   "display": "standalone",
-  "background_color": "#15151A",
-  "theme_color": "#15151A",
+  "background_color": "#15151a",
+  "theme_color": "#15151a",
   "orientation": "portrait",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/iron-log/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/iron-log/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/iron-log/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/iron-log/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
