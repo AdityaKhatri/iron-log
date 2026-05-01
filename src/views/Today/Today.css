@@ -173,7 +173,6 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding-bottom: 16px;
 }
 
 .session-timer {

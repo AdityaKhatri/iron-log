@@ -83,12 +83,18 @@
 [hidden] { display: none !important; }
 
 html {
+  /* 100dvh = dynamic viewport height: excludes browser UI on iOS.
+     Fallback to -webkit-fill-available for older iOS, then 100% */
   height: 100%;
+  height: -webkit-fill-available;
+  height: 100dvh;
   overflow: hidden;
 }
 
 body {
   height: 100%;
+  min-height: -webkit-fill-available;
+  height: 100dvh;
   overflow: hidden;
   font-family: var(--body);
   font-size: 15px;
@@ -100,6 +106,7 @@ body {
 
 #root {
   height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -132,12 +139,25 @@ p { line-height: 1.6; }
 
 a { color: var(--accent); text-decoration: none; }
 
+/* ─── Safe-top: applied to every first-bar in every view ────────────────────── */
+/* Any element that sits flush against the top of the screen must pad past the
+   status bar. List all header variants here rather than repeating in each CSS. */
+.topbar,
+.plan-header,
+.workouts-header,
+.workout-editor__header,
+.exercises-header-top,
+.ed-topbar {
+  padding-top: calc(8px + var(--safe-top));
+}
+
 /* ─── Topbar ─────────────────────────────────────────────────────────────────── */
 .topbar {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 16px 10px;
+  padding-top: calc(8px + var(--safe-top));
   border-bottom: 1px solid var(--line);
   background: var(--bg);
   flex-shrink: 0;
@@ -173,9 +193,10 @@ a { color: var(--accent); text-decoration: none; }
   grid-template-columns: repeat(5, 1fr);
   border-top: 1px solid var(--line);
   background: var(--bg);
-  padding: 6px 0 4px;
-  flex-shrink: 0;
+  /* Top padding for the tab content; bottom pads past home indicator */
+  padding: 6px 0 0;
   padding-bottom: calc(4px + var(--safe-bottom));
+  flex-shrink: 0;
 }
 .tab {
   display: flex;
@@ -495,7 +516,7 @@ a { color: var(--accent); text-decoration: none; }
   color: var(--fg);
   padding: 6px 8px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 16px;
   border-radius: 3px;
   width: 100%;
   outline: none;
@@ -516,6 +537,12 @@ a { color: var(--accent); text-decoration: none; }
 }
 .set-row.just-done { animation: setFlash 200ms ease-out; }
 
+/* ─── iOS zoom prevention ────────────────────────────────────────────────────── */
+/* iOS Safari zooms on focus when font-size < 16px. Always keep inputs at 16px. */
+input, select, textarea {
+  font-size: 16px;
+}
+
 /* ─── Form Elements (legacy) ─────────────────────────────────────────────────── */
 .input {
   width: 100%;
@@ -524,7 +551,7 @@ a { color: var(--accent); text-decoration: none; }
   border-radius: 3px;
   color: var(--fg);
   font-family: var(--body);
-  font-size: 15px;
+  font-size: 16px;
   padding: 10px 14px;
   outline: none;
   transition: border-color 120ms ease;
@@ -563,6 +590,21 @@ select.input {
 
 /* ─── Scroll Area ────────────────────────────────────────────────────────────── */
 .scroll-area { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+
+/* Safe-bottom padding on every scrollable content area so the last item
+   doesn't sit flush against the home indicator. Applied globally so we
+   don't have to repeat it in every view's CSS. */
+.today-idle,
+.session-scroll,
+.workouts-list,
+.workout-editor__body,
+.profile-scroll,
+.exercises-list,
+.plan-body,
+.plan-list,
+.ed-list {
+  padding-bottom: max(16px, var(--safe-bottom));
+}
 
 /* ─── Utilities ──────────────────────────────────────────────────────────────── */
 .text-primary   { color: var(--accent); }

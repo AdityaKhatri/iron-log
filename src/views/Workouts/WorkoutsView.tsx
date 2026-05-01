@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getAllWorkouts, putWorkout } from '../../db/workouts';
 import { getAllExercises } from '../../db/exercises';
 import { Modal } from '../../components/Modal/Modal';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { CategoryIcon, CATEGORY_COLOR, CATEGORY_LABEL } from '../../components/CategoryIcon/CategoryIcon';
+import { ToastContainer, useToast } from '../../components/Toast/Toast';
 import { uid } from '../../lib/ids';
 import type { Workout, WorkoutGroup, WorkoutBlock, Exercise } from '../../types';
 import './Workouts.css';
@@ -236,9 +237,33 @@ function WorkoutEditor({ workout, onSave, onBack }: {
   const [notes, setNotes] = useState(workout.notes);
   const [groups, setGroups] = useState<WorkoutGroup[]>(workout.groups);
   const [pickerForGroup, setPickerForGroup] = useState<number | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { toasts, show: showToast, dismiss } = useToast();
+  // Track initial values to detect changes
+  const initialRef = useRef({ name: workout.name, notes: workout.notes, groups: JSON.stringify(workout.groups) });
+
+  // Mark dirty whenever state drifts from last-saved snapshot
+  useEffect(() => {
+    const changed =
+      name !== initialRef.current.name ||
+      notes !== initialRef.current.notes ||
+      JSON.stringify(groups) !== initialRef.current.groups;
+    setDirty(changed);
+  }, [name, notes, groups]);
 
   async function save() {
-    await onSave({ ...workout, name, notes, groups });
+    setSaving(true);
+    try {
+      await onSave({ ...workout, name, notes, groups });
+      initialRef.current = { name, notes, groups: JSON.stringify(groups) };
+      setDirty(false);
+      showToast('Saved', 'ok');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Save failed', 'err');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function addGroup() {
@@ -296,7 +321,14 @@ function WorkoutEditor({ workout, onSave, onBack }: {
           </svg>
         </button>
         <span className="crumb" style={{ flex: 1, paddingLeft: 8 }}>{name || 'Workout'}</span>
-        <button className="btn primary btn-sm" style={{ flex: 'none' }} onClick={save}>Save</button>
+        <button
+          className="btn primary btn-sm"
+          style={{ flex: 'none', opacity: dirty ? 1 : 0.35, transition: 'opacity 200ms ease' }}
+          onClick={save}
+          disabled={!dirty || saving}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
       </div>
 
       <div className="workout-editor__body">
@@ -396,6 +428,7 @@ function WorkoutEditor({ workout, onSave, onBack }: {
           if (pickerForGroup !== null) addBlockToGroup(pickerForGroup, ex);
         }}
       />
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </div>
   );
 }

@@ -106,7 +106,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       await syncNowInternal(token);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setState(s => ({ ...s, syncing: false, error: `Connect failed: ${msg}` }));
+      const friendly = msg === 'IOS_PWA_POPUP_BLOCKED'
+        ? 'ios_pwa'
+        : `Connect failed: ${msg}`;
+      setState(s => ({ ...s, syncing: false, error: friendly }));
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

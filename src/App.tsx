@@ -64,7 +64,7 @@ export function App() {
   return (
     <SyncProvider>
       <ActiveSessionProvider>
-        <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <main style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {view === 'today'    && <TodayView />}
           {view === 'plan'     && <PlanView />}
           {view === 'workouts' && <WorkoutsView />}

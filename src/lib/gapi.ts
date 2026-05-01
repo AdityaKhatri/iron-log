@@ -39,6 +39,20 @@ declare global {
   }
 }
 
+// ─── iOS PWA detection ────────────────────────────────────────────────────────
+
+/**
+ * Returns true when running as an installed PWA on iOS (standalone mode).
+ * In this mode, window.open() spawns a separate Safari process and the
+ * OAuth postMessage callback never reaches the PWA — sign-in silently breaks.
+ */
+export function isIosPwa(): boolean {
+  return (
+    // @ts-expect-error navigator.standalone is iOS-only
+    typeof navigator.standalone === 'boolean' && navigator.standalone === true
+  );
+}
+
 // ─── Script loading ───────────────────────────────────────────────────────────
 
 let gisLoadPromise: Promise<void> | null = null;
@@ -76,6 +90,9 @@ export async function requestToken(
   scopes: string,
   silent: boolean,
 ): Promise<string> {
+  if (!silent && isIosPwa()) {
+    throw new Error('IOS_PWA_POPUP_BLOCKED');
+  }
   await loadGis();
 
   return new Promise<string>((resolve, reject) => {
