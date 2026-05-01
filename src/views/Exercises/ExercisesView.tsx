@@ -6,6 +6,7 @@ import { ExerciseCard } from './ExerciseCard';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { AddExerciseModal } from './AddExerciseModal';
 import { CsvImportButton } from './CsvImportButton';
+import { LibrarySyncButton } from './LibrarySyncButton';
 import { useExercises } from '../../hooks/useExercises';
 import type { Exercise, CategoryType, EquipmentType } from '../../types';
 import './Exercises.css';
@@ -76,6 +77,8 @@ export function ExercisesView({ onOpenEditor }: { onOpenEditor?: () => void }) {
               </button>
               {menuOpen && (
                 <div className="ex-menu-dropdown">
+                  <LibrarySyncButton onSynced={() => { reload(); }} />
+                  <div className="divider" style={{ margin: '6px 0' }} />
                   <CsvImportButton onImported={() => { reload(); setMenuOpen(false); }} />
                   <div className="divider" style={{ margin: '6px 0' }} />
                   <button
@@ -110,7 +113,8 @@ export function ExercisesView({ onOpenEditor }: { onOpenEditor?: () => void }) {
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <h3>No exercises found</h3>
-            <p>Try adjusting your search or filters, or import the built-in library.</p>
+            <p>Try adjusting your search or filters, or sync the built-in library.</p>
+            <LibrarySyncButton onSynced={reload} />
             <CsvImportButton onImported={reload} />
           </div>
         ) : (
