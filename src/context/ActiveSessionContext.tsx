@@ -1,0 +1,88 @@
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { getActiveSession, setActiveSession } from '../db/meta';
+import { putSession } from '../db/sessions';
+import type { Session } from '../types';
+
+interface ActiveSessionContextValue {
+  session: Session | null;
+  loading: boolean;
+  startSession: (session: Session) => Promise<void>;
+  resumeSession: (session: Session) => Promise<void>;
+  updateSession: (session: Session) => Promise<void>;
+  finishSession: () => Promise<Session | null>;
+  discardSession: () => Promise<void>;
+}
+
+const ActiveSessionContext = createContext<ActiveSessionContextValue | null>(null);
+
+export function ActiveSessionProvider({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getActiveSession().then(s => {
+      setSession(s);
+      setLoading(false);
+    });
+  }, []);
+
+  const startSession = useCallback(async (s: Session) => {
+    setSession(s);
+    await setActiveSession(s);
+  }, []);
+
+  // Re-open an already-finished session for editing.
+  // The session retains its original finishedAt so finishSession knows not to overwrite timing.
+  const resumeSession = useCallback(async (s: Session) => {
+    setSession(s);
+    await setActiveSession(s);
+  }, []);
+
+  const updateSession = useCallback(async (s: Session) => {
+    const updated = { ...s, updatedAt: Date.now() };
+    setSession(updated);
+    await setActiveSession(updated);
+  }, []);
+
+  const finishSession = useCallback(async (): Promise<Session | null> => {
+    if (!session) return null;
+    const now = Date.now();
+    // If session was resumed from history (already had finishedAt), preserve original timing.
+    const wasAlreadyFinished = session.finishedAt !== null;
+    const finished: Session = {
+      ...session,
+      finishedAt: wasAlreadyFinished ? session.finishedAt : now,
+      durationMs: wasAlreadyFinished ? session.durationMs : now - session.startedAt,
+      updatedAt: now,
+    };
+    await putSession(finished);
+    await setActiveSession(null);
+    setSession(null);
+    return finished;
+  }, [session]);
+
+  const discardSession = useCallback(async () => {
+    setSession(null);
+    await setActiveSession(null);
+  }, []);
+
+  return (
+    <ActiveSessionContext.Provider value={{
+      session,
+      loading,
+      startSession,
+      resumeSession,
+      updateSession,
+      finishSession,
+      discardSession,
+    }}>
+      {children}
+    </ActiveSessionContext.Provider>
+  );
+}
+
+export function useActiveSession(): ActiveSessionContextValue {
+  const ctx = useContext(ActiveSessionContext);
+  if (!ctx) throw new Error('useActiveSession must be used within ActiveSessionProvider');
+  return ctx;
+}

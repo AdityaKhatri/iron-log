@@ -1,0 +1,238 @@
+.exercises-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.exercises-header {
+  padding: 0 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.exercises-header-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.exercises-header-top .crumb {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.exercises-search-row {
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.exercises-filters {
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exercises-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+.exercise-count {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--fg-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 10px 16px 6px;
+}
+
+/* Legacy exercise card (used by ExerciseCard component) */
+.exercise-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.exercise-card:hover {
+  background: var(--surface);
+}
+
+.exercise-card--archived {
+  opacity: 0.5;
+}
+
+.exercise-card__icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+.exercise-card__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exercise-card__name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.exercise-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.exercise-card__watch {
+  flex-shrink: 0;
+  color: var(--accent);
+  border-color: rgba(255,90,31,0.3);
+  background: rgba(255,90,31,0.08);
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,90,31,0.3);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.exercise-card__watch:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── Add / Edit Exercise form ────────────────────────────────────────────── */
+
+.ex-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ex-form__error {
+  background: rgba(229, 62, 62, 0.12);
+  border: 1px solid rgba(229, 62, 62, 0.35);
+  border-radius: 3px;
+  padding: 10px 12px;
+  color: #fc8181;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.ex-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ex-form__label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.ex-form__input,
+.ex-form__select {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  width: 100%;
+  transition: border-color 120ms ease;
+  appearance: none;
+}
+.ex-form__input:focus,
+.ex-form__select:focus { border-color: var(--accent); }
+.ex-form__input::placeholder { color: var(--fg-mute); }
+.ex-form__select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6760' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+
+/* Category chip row */
+.ex-form__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ex-form__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--fg-mute);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.ex-form__chip:hover { border-color: var(--line-2); color: var(--fg-dim); }
+
+/* Two-column row */
+.ex-form__row {
+  display: flex;
+  gap: 12px;
+}
+
+/* Action button row */
+.ex-form__actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* Menu dropdown */
+.ex-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px;
+  z-index: 20;
+  min-width: 200px;
+}

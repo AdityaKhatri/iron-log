@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm create:*)",
+      "Bash(cp -r tmp/iron-log-scaffold/. .)",
+      "Bash(rm -rf tmp)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(cp \"/home/aditya/.claude/projects/-home-aditya-Projects-iron-log/ccf3c9ad-e528-4b27-bc46-e70eb4dfd340/tool-results/webfetch-1777555796897-fpxu62.bin\" /tmp/ironlog.gz)",
+      "Bash(gunzip -f /tmp/ironlog.gz)",
+      "Read(//tmp/**)",
+      "Bash(tar -tf /tmp/ironlog)",
+      "Bash(tar -xf /tmp/ironlog -C /tmp/)",
+      "Bash(mkdir -p /tmp/ironlog-out)",
+      "Bash(tar -xf /tmp/ironlog -C /tmp/ironlog-out)",
+      "Bash(grep:*)"
+    ]
+  }
+}

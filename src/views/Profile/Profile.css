@@ -1,0 +1,183 @@
+.profile-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.profile-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 0 48px;
+}
+
+.profile-saved-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--grp-cardio);
+}
+
+/* ── Section ── */
+.profile-section {
+  padding: 16px 16px 4px;
+}
+
+.profile-section + .profile-section {
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+  padding-top: 20px;
+}
+
+.profile-section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin-bottom: 10px;
+}
+
+/* ── Card (white-line bordered group) ── */
+.profile-card {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* ── Field row ── */
+.profile-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.profile-field.last {
+  border-bottom: none;
+}
+
+.profile-field-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+  flex-shrink: 0;
+}
+
+.profile-field-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.profile-input {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 5px 8px;
+  outline: none;
+  width: 160px;
+  text-align: right;
+}
+.profile-input:focus { border-color: var(--accent); }
+.profile-input[type="date"] { color-scheme: dark; }
+.profile-input[style*="80px"] { width: 80px; }
+
+.profile-field-unit {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-mute);
+  letter-spacing: 0.08em;
+}
+
+.profile-field-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-mute);
+  letter-spacing: 0.06em;
+}
+
+/* Weight unit toggle */
+.profile-unit-toggle {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.profile-unit-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 5px 14px;
+  background: transparent;
+  border: none;
+  color: var(--fg-mute);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.profile-unit-btn + .profile-unit-btn { border-left: 1px solid var(--line); }
+.profile-unit-btn.active { background: var(--accent); color: #fff; }
+
+/* ── Bodyweight history ── */
+.profile-bw-history {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.profile-bw-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.profile-bw-row:last-child { border-bottom: none; }
+.profile-bw-row.today { background: rgba(255,90,31,0.06); }
+
+.profile-bw-date {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--fg-mute);
+}
+
+.profile-bw-value {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+/* ── Charts ── */
+.profile-chart-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin-bottom: 8px;
+}
+
+.profile-chart-canvas {
+  width: 100%;
+  height: 160px;
+  display: block;
+  border-radius: 3px;
+}

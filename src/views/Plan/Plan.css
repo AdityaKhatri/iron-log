@@ -1,0 +1,283 @@
+.plan-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.plan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 10px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.plan-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.plan-month {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+/* View mode toggle (calendar / list) */
+.plan-view-toggle {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.plan-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--fg-mute);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.plan-toggle-btn + .plan-toggle-btn {
+  border-left: 1px solid var(--line);
+}
+.plan-toggle-btn.active {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+.plan-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.plan-weekday {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-mute);
+  padding: 8px 0 6px;
+}
+
+.plan-cal-wrap {
+  flex-shrink: 0;
+  padding: 0;
+}
+
+/* Override cal-grid for plan (no outer border padding) */
+.plan-view .cal-grid {
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+/* Done/unplanned calendar pills */
+.cal-pill--done {
+  opacity: 0.65;
+  background: rgba(106, 168, 106, 0.15);
+  border-color: rgba(106, 168, 106, 0.4);
+  color: var(--grp-cardio);
+}
+
+.cal-pill--unplanned {
+  background: rgba(107, 103, 96, 0.18);
+  border-color: rgba(107, 103, 96, 0.35);
+  color: var(--fg-mute);
+}
+
+.plan-day-panel {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.plan-day-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.plan-day-panel__date {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.plan-workout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  background: var(--surface);
+  border-radius: 3px;
+  padding: 12px 14px;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.plan-workout-row--done {
+  border-left-color: var(--grp-cardio);
+  opacity: 0.8;
+}
+
+.plan-workout-row--unplanned {
+  border-left-color: var(--fg-mute);
+}
+
+.plan-done-check {
+  color: var(--grp-cardio);
+}
+
+.plan-workout-row__name {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 3px;
+}
+
+.plan-workout-row__meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--fg-mute);
+}
+
+/* Workout picker row in modal */
+.plan-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  color: var(--fg);
+  transition: background 120ms ease;
+}
+.plan-picker-row:hover { background: var(--surface); }
+
+/* ── List view ────────────────────────────────────────────────────────────── */
+
+.plan-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 0 32px;
+}
+
+.plan-list-day {
+  padding: 12px 16px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.plan-list-day--past .plan-list-day__header {
+  opacity: 0.55;
+}
+
+.plan-list-day--today {
+  background: rgba(255, 90, 31, 0.04);
+}
+
+.plan-list-day__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.plan-list-day__date {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.plan-list-today-chip {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(255, 90, 31, 0.12);
+  border: 1px solid rgba(255, 90, 31, 0.3);
+  border-radius: 2px;
+  padding: 2px 6px;
+}
+
+.plan-list-day__entries {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.plan-list-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  background: var(--surface);
+  border-radius: 3px;
+}
+
+.plan-list-entry--done {
+  border-left-color: var(--grp-cardio);
+  opacity: 0.8;
+}
+
+.plan-list-entry--logged {
+  border-left-color: var(--fg-mute);
+}
+
+.plan-list-entry__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-2);
+  flex-shrink: 0;
+}
+
+.plan-list-entry__dot.done {
+  background: var(--grp-cardio);
+}
+
+.plan-list-entry__name {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.plan-list-entry__meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--fg-mute);
+}

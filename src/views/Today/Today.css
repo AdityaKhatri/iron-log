@@ -1,0 +1,226 @@
+.today-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ─── Idle today ─────────────────────────────────────────────────────────────── */
+.today-idle {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.today-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.today-hero-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.plan-section {
+  padding: 0 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin-bottom: 2px;
+}
+
+.plan-card {
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  background: var(--surface);
+  padding: 14px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-card__name {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.plan-card__meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--fg-mute);
+}
+
+.quick-start-section {
+  padding: 0 16px 24px;
+}
+
+/* Done state for plan card */
+.plan-card--done {
+  border-left-color: var(--grp-cardio);
+  opacity: 0.85;
+}
+
+.plan-card__done-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.plan-card__done-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--grp-cardio);
+}
+
+/* Editing session banner */
+.session-edit-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: rgba(106, 168, 106, 0.12);
+  border-bottom: 1px solid rgba(106, 168, 106, 0.3);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--grp-cardio);
+  flex-shrink: 0;
+}
+
+/* ─── Bodyweight logger ──────────────────────────────────────────────────────── */
+.bw-section {
+  padding: 0 16px 12px;
+}
+
+.bw-logger {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bw-logger__fields {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.bw-logger__input {
+  width: 90px;
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--fg);
+  outline: none;
+}
+.bw-logger__input:focus { border-color: var(--accent); }
+
+.bw-logger__unit {
+  width: 70px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* ─── Active session ─────────────────────────────────────────────────────────── */
+.session-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: 16px;
+}
+
+.session-timer {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+
+.session-name {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Discard confirm overlay */
+.discard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  padding: 24px;
+}
+
+.discard-sheet {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 20px;
+}
+
+.discard-sheet h3 {
+  margin-bottom: 10px;
+}
+
+.discard-sheet p {
+  color: var(--fg-mute);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.discard-actions {
+  display: flex;
+  gap: 8px;
+}

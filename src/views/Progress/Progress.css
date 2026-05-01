@@ -1,0 +1,30 @@
+.progress-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.progress-header {
+  padding: 8px 16px 10px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.progress-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progress-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 0 32px;
+  display: flex;
+  flex-direction: column;
+}

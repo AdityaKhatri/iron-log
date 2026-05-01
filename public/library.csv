@@ -1,0 +1,42 @@
+id,name,muscleGroup,secondaryMuscles,equipment,category,videoUrl,defaultUnit
+ex_pullup,Pull-Up,back,"biceps,shoulders",bodyweight,muscle,https://youtu.be/eGo4IYlbE5g,
+ex_chinup,Chin-Up,back,"biceps,shoulders",bodyweight,muscle,https://youtu.be/brhRXlOhsAM,
+ex_bench_press,Bench Press,chest,"triceps,shoulders",barbell,muscle,https://youtu.be/rT7DgCr-3pg,kg
+ex_incline_bench,Incline Bench Press,chest,"triceps,shoulders",barbell,muscle,,kg
+ex_ohp,Overhead Press,shoulders,"triceps,upper back",barbell,muscle,https://youtu.be/2yjwXTZQDDI,kg
+ex_squat,Back Squat,legs,"glutes,core",barbell,muscle,https://youtu.be/ultWZbUMPL8,kg
+ex_front_squat,Front Squat,legs,"glutes,core",barbell,muscle,,kg
+ex_deadlift,Deadlift,back,"glutes,hamstrings,core",barbell,muscle,https://youtu.be/op9kVnSso6Q,kg
+ex_rdl,Romanian Deadlift,hamstrings,"glutes,lower back",barbell,muscle,,kg
+ex_row_bb,Barbell Row,back,"biceps,core",barbell,muscle,,kg
+ex_row_db,Dumbbell Row,back,biceps,dumbbell,muscle,,kg
+ex_dip,Dip,chest,"triceps,shoulders",bodyweight,muscle,https://youtu.be/2z8JmcrW-As,
+ex_pushup,Push-Up,chest,"triceps,shoulders",bodyweight,muscle,,
+ex_lat_pulldown,Lat Pulldown,back,biceps,cable,muscle,,kg
+ex_cable_row,Cable Row,back,biceps,cable,muscle,,kg
+ex_leg_press,Leg Press,legs,glutes,machine,muscle,,kg
+ex_leg_curl,Leg Curl,hamstrings,,machine,muscle,,kg
+ex_leg_ext,Leg Extension,legs,,machine,muscle,,kg
+ex_calf_raise,Calf Raise,legs,,machine,muscle,,kg
+ex_bicep_curl_bb,Barbell Curl,biceps,forearms,barbell,muscle,,kg
+ex_bicep_curl_db,Dumbbell Curl,biceps,forearms,dumbbell,muscle,,kg
+ex_tricep_pushdown,Tricep Pushdown,triceps,,cable,muscle,,kg
+ex_skull_crusher,Skull Crusher,triceps,,barbell,muscle,,kg
+ex_lateral_raise,Lateral Raise,shoulders,,dumbbell,muscle,,kg
+ex_face_pull,Face Pull,shoulders,"rear delts,upper back",cable,muscle,,kg
+ex_plank,Plank,core,,bodyweight,muscle,,sec
+ex_ab_wheel,Ab Wheel Rollout,core,,bodyweight,muscle,,
+ex_hanging_leg_raise,Hanging Leg Raise,core,,bodyweight,muscle,,
+ex_hip_thrust,Hip Thrust,glutes,hamstrings,barbell,muscle,,kg
+ex_world_greatest,World's Greatest Stretch,full-body,,bodyweight,stretching,https://youtu.be/cM_5N5fY1k4,sec
+ex_joint_rotations,Joint Rotations,full-body,,bodyweight,warmup,,sec
+ex_leg_swing,Leg Swings,legs,hips,bodyweight,warmup,,
+ex_arm_circle,Arm Circles,shoulders,,bodyweight,warmup,,
+ex_hip_circle,Hip Circles,hips,core,bodyweight,warmup,,
+ex_cat_cow,Cat-Cow,core,lower back,bodyweight,stretching,,sec
+ex_pigeon,Pigeon Pose,hips,glutes,bodyweight,stretching,,sec
+ex_couch_stretch,Couch Stretch,hips,quads,bodyweight,stretching,,sec
+ex_run,Running,full-body,,other,cardio,,min
+ex_bike,Cycling,legs,,other,cardio,,min
+ex_row_machine,Rowing Machine,full-body,,machine,cardio,,min
+ex_jump_rope,Jump Rope,full-body,,other,cardio,,min

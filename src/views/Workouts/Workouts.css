@@ -1,0 +1,134 @@
+.workouts-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.workouts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.workouts-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+.workout-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.workout-card:hover { background: var(--surface); }
+.workout-card__info { flex: 1; }
+.workout-card__name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.workout-card__meta { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; color: var(--fg-mute); }
+
+/* ─── Editor ─────────────────────────────────────────────────────────────────── */
+.workout-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.workout-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.workout-editor__body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 0 32px;
+}
+
+.editor-name-wrap {
+  padding: 0 16px 16px;
+}
+
+/* Group in editor uses the shared .group .g-{type} from global */
+.group-editor {
+  margin-bottom: 8px;
+}
+
+.group-editor__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Block row: drag-handle | name | sets | reps | weight | delete */
+.block-row {
+  display: grid;
+  grid-template-columns: 14px 1fr 56px 56px 70px 18px;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.block-row__name {
+  font-weight: 600;
+  font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.block-row__drag {
+  color: var(--fg-mute);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+}
+
+.block-row__targets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.block-row__input {
+  width: 100%;
+  text-align: center;
+}
+
+/* Exercise Picker (inside Modal) */
+.exercise-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  color: var(--fg);
+  transition: background 120ms ease;
+}
+
+.exercise-picker-row:hover {
+  background: var(--surface);
+}
