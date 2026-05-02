@@ -83,19 +83,12 @@
 [hidden] { display: none !important; }
 
 html {
-  /* 100dvh = dynamic viewport height: excludes browser UI on iOS.
-     Fallback to -webkit-fill-available for older iOS, then 100% */
   height: 100%;
-  height: -webkit-fill-available;
-  height: 100dvh;
-  overflow: hidden;
+  background: var(--bg);
 }
 
 body {
   height: 100%;
-  min-height: -webkit-fill-available;
-  height: 100dvh;
-  overflow: hidden;
   font-family: var(--body);
   font-size: 15px;
   color: var(--fg);
@@ -105,11 +98,18 @@ body {
 }
 
 #root {
-  height: 100%;
-  height: 100dvh;
+  /* position: fixed + inset: 0 is the only approach that reliably fills
+     exactly the visual viewport on iOS PWA — no height units, no JS needed.
+     It anchors to all four edges regardless of what the browser reports. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--bg);
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────────── */
@@ -138,18 +138,6 @@ h4 { font-size: 17px; }
 p { line-height: 1.6; }
 
 a { color: var(--accent); text-decoration: none; }
-
-/* ─── Safe-top: applied to every first-bar in every view ────────────────────── */
-/* Any element that sits flush against the top of the screen must pad past the
-   status bar. List all header variants here rather than repeating in each CSS. */
-.topbar,
-.plan-header,
-.workouts-header,
-.workout-editor__header,
-.exercises-header-top,
-.ed-topbar {
-  padding-top: calc(8px + var(--safe-top));
-}
 
 /* ─── Topbar ─────────────────────────────────────────────────────────────────── */
 .topbar {
@@ -538,9 +526,16 @@ a { color: var(--accent); text-decoration: none; }
 .set-row.just-done { animation: setFlash 200ms ease-out; }
 
 /* ─── iOS zoom prevention ────────────────────────────────────────────────────── */
-/* iOS Safari zooms on focus when font-size < 16px. Always keep inputs at 16px. */
+/* iOS Safari zooms on input focus when font-size < 16px. The base rule sets
+   the default; the @supports block uses !important to beat class-level
+   specificity (e.g. .search-input { font-size: 12px }) on iOS only. */
 input, select, textarea {
   font-size: 16px;
+}
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* ─── Form Elements (legacy) ─────────────────────────────────────────────────── */

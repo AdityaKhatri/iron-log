@@ -6,6 +6,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/iron-log/sw.js', { scope: '/iron-log/' });
   });
 }
+
 import { ActiveSessionProvider } from './context/ActiveSessionContext';
 import { PreferencesProvider } from './context/PreferencesContext';
 import './styles/global.css';

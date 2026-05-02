@@ -186,7 +186,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setState(s => ({ ...s, syncing: false, error: `Restore failed: ${msg}` }));
+      const friendly = msg === 'IOS_PWA_POPUP_BLOCKED' ? 'ios_pwa' : `Restore failed: ${msg}`;
+      setState(s => ({ ...s, syncing: false, error: friendly }));
       throw err;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
