@@ -108,6 +108,29 @@
   color: var(--grp-cardio);
 }
 
+/* Resume banner (paused session) */
+.session-resume-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(255, 90, 31, 0.1);
+  border-bottom: 1px solid rgba(255, 90, 31, 0.25);
+  flex-shrink: 0;
+}
+
+.session-resume-banner__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
 /* Editing session banner */
 .session-edit-banner {
   display: flex;

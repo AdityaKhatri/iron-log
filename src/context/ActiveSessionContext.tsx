@@ -5,18 +5,22 @@ import type { Session } from '../types';
 
 interface ActiveSessionContextValue {
   session: Session | null;
+  paused: boolean;
   loading: boolean;
   startSession: (session: Session) => Promise<void>;
   resumeSession: (session: Session) => Promise<void>;
   updateSession: (session: Session) => Promise<void>;
   finishSession: () => Promise<Session | null>;
   discardSession: () => Promise<void>;
+  pauseSession: () => void;
+  unpauseSession: () => void;
 }
 
 const ActiveSessionContext = createContext<ActiveSessionContextValue | null>(null);
 
 export function ActiveSessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,19 +66,26 @@ export function ActiveSessionProvider({ children }: { children: React.ReactNode 
   }, [session]);
 
   const discardSession = useCallback(async () => {
+    setPaused(false);
     setSession(null);
     await setActiveSession(null);
   }, []);
 
+  const pauseSession = useCallback(() => setPaused(true), []);
+  const unpauseSession = useCallback(() => setPaused(false), []);
+
   return (
     <ActiveSessionContext.Provider value={{
       session,
+      paused,
       loading,
       startSession,
       resumeSession,
       updateSession,
       finishSession,
       discardSession,
+      pauseSession,
+      unpauseSession,
     }}>
       {children}
     </ActiveSessionContext.Provider>

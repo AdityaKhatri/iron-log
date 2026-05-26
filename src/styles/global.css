@@ -240,15 +240,8 @@ a { color: var(--accent); text-decoration: none; }
 .tab svg { width: 18px; height: 18px; stroke-width: 1.6; }
 
 /* ─── Groups ─────────────────────────────────────────────────────────────────── */
-.group { border-left: 2px solid var(--grp-main); padding: 14px 0 14px 14px; margin: 0 16px; }
-.group + .group { margin-top: 6px; }
-.g-warmup     { border-left-color: var(--grp-warmup); }
-.g-mobility   { border-left-color: var(--grp-mobility); }
-.g-activation { border-left-color: var(--grp-activation); }
-.g-main       { border-left-color: var(--grp-main); }
-.g-accessory  { border-left-color: var(--grp-accessory); }
-.g-cardio     { border-left-color: var(--grp-cardio); }
-.g-cooldown   { border-left-color: var(--grp-cooldown); }
+.group { padding: 14px 0; margin: 0 16px; }
+.group + .group { border-top: 1px solid var(--line); }
 .group-head {
   display: flex;
   align-items: baseline;
@@ -414,14 +407,14 @@ a { color: var(--accent); text-decoration: none; }
 }
 .add-block:hover { color: var(--fg); border-color: var(--fg-mute); }
 
-/* ─── Sticky Bar ─────────────────────────────────────────────────────────────── */
-.stickybar {
-  border-top: 1px solid var(--line);
-  background: var(--bg);
-  padding: 10px 16px 12px;
+/* ─── Session action buttons (inside scroll, at bottom) ──────────────────────── */
+.session-actions {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  flex-shrink: 0;
+  padding: 24px 16px 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
 }
 
 /* ─── Chips ──────────────────────────────────────────────────────────────────── */
@@ -621,8 +614,10 @@ select.input {
 .exercises-list,
 .plan-body,
 .plan-list,
-.ed-list {
-  padding-bottom: max(16px, var(--safe-bottom));
+.ed-list,
+.today-idle,
+.session-scroll {
+  padding-bottom: max(24px, calc(var(--safe-bottom) + 16px));
 }
 
 /* ─── Utilities ──────────────────────────────────────────────────────────────── */

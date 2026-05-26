@@ -58,7 +58,7 @@ function templateToSessionGroups(workout: Workout): SessionGroup[] {
 // ─── Idle Today View ──────────────────────────────────────────────────────────
 
 export function TodayView() {
-  const { session, startSession, resumeSession } = useActiveSession();
+  const { session, paused, startSession, resumeSession, unpauseSession } = useActiveSession();
   const { day } = usePlanDay(TODAY);
   const { streak, thisWeek, allTime } = useQuickStats();
   // Finished sessions logged today, keyed by workoutId
@@ -113,7 +113,7 @@ export function TodayView() {
     await startSession(s);
   }
 
-  if (session) return <ActiveSessionView />;
+  if (session && !paused) return <ActiveSessionView />;
 
   // Build day-of-week + date crumb
   const dateObj = new Date(TODAY + 'T00:00:00');
@@ -125,6 +125,18 @@ export function TodayView() {
         <LogoMark size={20} />
         <span className="crumb">{dayAbbr} · {TODAY}</span>
       </div>
+
+      {paused && session && (
+        <div className="session-resume-banner">
+          <div className="session-resume-banner__info">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>{session.workoutName} in progress</span>
+          </div>
+          <button className="btn primary btn-sm" onClick={unpauseSession}>Resume</button>
+        </div>
+      )}
 
       <div className="today-idle">
         <div className="today-hero">
@@ -263,8 +275,8 @@ function prescriptionLabel(block: SessionBlock, ex?: Exercise): string {
 }
 
 function ActiveSessionView() {
-  const { session, updateSession, finishSession, discardSession } = useActiveSession();
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const { session, updateSession, finishSession, discardSession, pauseSession } = useActiveSession();
+  const [confirmExit, setConfirmExit] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [pickerGroupId, setPickerGroupId] = useState<string | null>(null);
   const [exerciseMap, setExerciseMap] = useState<Map<string, Exercise>>(new Map());
@@ -405,7 +417,7 @@ function ActiveSessionView() {
           const totalCount = group.blocks.reduce((a, b) => a + b.sets.length, 0);
 
           return (
-            <div key={group.id} className={`group ${groupClass}`} style={{ marginTop: 16 }}>
+            <div key={group.id} className={`group ${groupClass}`}>
               <div className="group-head">
                 <span className="gname">{group.name}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -618,6 +630,16 @@ function ActiveSessionView() {
             </div>
           );
         })}
+
+        {/* Action buttons — at end of scroll, not sticky */}
+        <div className="session-actions">
+          <button className="btn primary btn-full" onClick={() => finishSession()}>
+            {isEditing ? 'Save Changes' : 'Finish Session'}
+          </button>
+          <button className="btn ghost btn-full" onClick={() => setConfirmExit(true)}>
+            {isEditing ? 'Cancel' : 'Exit'}
+          </button>
+        </div>
       </div>
 
       {/* Mini video player */}
@@ -647,36 +669,40 @@ function ActiveSessionView() {
         );
       })()}
 
-      {/* Sticky action bar */}
-      <div className="stickybar">
-        <button className="btn ghost" onClick={() => setConfirmDiscard(true)}>
-          {isEditing ? 'Cancel' : 'Discard'}
-        </button>
-        <button className="btn primary" onClick={() => finishSession()}>
-          {isEditing ? 'Save Changes' : 'Finish Session'}
-        </button>
-      </div>
-
-      {/* Discard confirm */}
-      {confirmDiscard && (
+      {/* Exit sheet */}
+      {confirmExit && (
         <div className="discard-overlay">
           <div className="discard-sheet">
-            <h3>{isEditing ? 'Cancel editing?' : 'Discard session?'}</h3>
-            <p>
-              {isEditing
-                ? 'Your changes will not be saved. The original session remains.'
-                : 'This cannot be undone. Your progress will be lost.'}
-            </p>
-            <div className="discard-actions">
-              <button className="btn outline btn-full" onClick={() => setConfirmDiscard(false)}>Keep going</button>
-              <button
-                className="btn btn-full"
-                style={{ background: '#E53E3E', borderColor: '#E53E3E', color: '#fff' }}
-                onClick={() => discardSession()}
-              >
-                {isEditing ? 'Cancel Changes' : 'Discard'}
-              </button>
-            </div>
+            {isEditing ? (
+              <>
+                <h3>Cancel editing?</h3>
+                <p>Your changes will not be saved. The original session remains.</p>
+                <div className="discard-actions">
+                  <button className="btn outline btn-full" onClick={() => setConfirmExit(false)}>Keep editing</button>
+                  <button
+                    className="btn btn-full"
+                    style={{ background: '#E53E3E', borderColor: '#E53E3E', color: '#fff' }}
+                    onClick={() => discardSession()}
+                  >Cancel Changes</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3>Exit session?</h3>
+                <p>Your progress is saved. Come back anytime to continue.</p>
+                <div className="discard-actions">
+                  <button className="btn outline btn-full" onClick={() => setConfirmExit(false)}>Keep going</button>
+                  <button className="btn primary btn-full" onClick={() => { setConfirmExit(false); pauseSession(); }}>
+                    Save &amp; Exit
+                  </button>
+                  <button
+                    className="btn btn-full"
+                    style={{ background: '#E53E3E', borderColor: '#E53E3E', color: '#fff' }}
+                    onClick={() => discardSession()}
+                  >Discard Session</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

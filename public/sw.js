@@ -16,7 +16,12 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_VERSION).then(cache => cache.addAll(SHELL))
   );
-  self.skipWaiting();
+  // Do NOT skipWaiting here — let the app prompt the user first.
+});
+
+// ── Message: app triggers skipWaiting after user confirms update ──────────────
+self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // ── Activate: prune old caches ────────────────────────────────────────────────
