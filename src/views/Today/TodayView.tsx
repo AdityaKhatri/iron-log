@@ -27,12 +27,13 @@ const GROUP_CLASS: Record<string, string> = {
   cooldown: 'g-cooldown',
 };
 
-function templateToSessionGroups(workout: Workout): SessionGroup[] {
+function templateToSessionGroups(workout: Workout, exerciseMap: Map<string, Exercise>): SessionGroup[] {
   return workout.groups.map(g => ({
     id: g.id,
     name: g.name,
     groupType: g.groupType,
     blocks: g.blocks.map(b => {
+      const ex = exerciseMap.get(b.exerciseId);
       const setCount = b.targetSets ?? 3;
       const sets: SessionSet[] = Array.from({ length: setCount }, () => ({
         completed: false,
@@ -46,7 +47,7 @@ function templateToSessionGroups(workout: Workout): SessionGroup[] {
       return {
         id: b.id,
         exerciseId: b.exerciseId,
-        exerciseName: b.exerciseId,
+        exerciseName: ex?.name ?? b.exerciseId,
         skipped: false,
         skipReason: '',
         sets,
@@ -95,8 +96,9 @@ export function TodayView() {
   }
 
   async function startFromTemplate(workoutId: string) {
-    const workout = await getWorkout(workoutId);
+    const [workout, exercises] = await Promise.all([getWorkout(workoutId), getAllExercises()]);
     if (!workout) return;
+    const exerciseMap = new Map(exercises.map(e => [e.id, e]));
     const s: Session = {
       id: uid('sess'),
       date: TODAY,
@@ -106,7 +108,7 @@ export function TodayView() {
       workoutId: workout.id,
       workoutName: workout.name,
       unplanned: false,
-      groups: templateToSessionGroups(workout),
+      groups: templateToSessionGroups(workout, exerciseMap),
       notes: '',
       updatedAt: Date.now(),
     };
@@ -551,50 +553,62 @@ function ActiveSessionView() {
                           ) : (
                             <>
                               <div className="focus-inputs">
-                                {/* Weight */}
-                                <div className="focus-field">
-                                  <div className="focus-field__label">Weight</div>
-                                  <div className="focus-field__row">
-                                    <button className="nudge-btn" onClick={() => updateSet(group.id, block.id, si, { weight: Math.max(0, (set.weight ?? 0) - 2.5) })}>−2.5</button>
-                                    <input
-                                      className="focus-input"
-                                      type="number"
-                                      inputMode="decimal"
-                                      placeholder="—"
-                                      value={set.weight ?? ''}
-                                      onChange={e => updateSet(group.id, block.id, si, { weight: e.target.value ? parseFloat(e.target.value) : null })}
-                                    />
-                                    <button className="nudge-btn" onClick={() => updateSet(group.id, block.id, si, { weight: (set.weight ?? 0) + 2.5 })}>+2.5</button>
+                                {/* Weight — only for weighted exercises */}
+                                {!timeBased && (ex?.defaultUnit === 'kg' || ex?.defaultUnit === 'lb') && (
+                                  <div className="focus-field">
+                                    <div className="focus-field__label">Weight ({ex.defaultUnit})</div>
+                                    <div className="focus-field__row">
+                                      <button className="nudge-btn" onClick={() => updateSet(group.id, block.id, si, { weight: Math.max(0, (set.weight ?? 0) - 2.5) })}>−2.5</button>
+                                      <input
+                                        className="focus-input"
+                                        type="number"
+                                        inputMode="decimal"
+                                        placeholder="—"
+                                        value={set.weight ?? ''}
+                                        onChange={e => updateSet(group.id, block.id, si, { weight: e.target.value ? parseFloat(e.target.value) : null })}
+                                      />
+                                      <button className="nudge-btn" onClick={() => updateSet(group.id, block.id, si, { weight: (set.weight ?? 0) + 2.5 })}>+2.5</button>
+                                    </div>
                                   </div>
-                                </div>
+                                )}
 
-                                {/* Reps or Time */}
-                                <div className="focus-field">
-                                  <div className="focus-field__label">{timeBased ? 'Time (s)' : 'Reps'}</div>
-                                  <div className="focus-field__row">
-                                    <button className="nudge-btn" onClick={() => timeBased
-                                      ? updateSet(group.id, block.id, si, { time: Math.max(1, (set.time ?? 0) - 5) })
-                                      : updateSet(group.id, block.id, si, { reps: Math.max(1, (set.reps ?? 0) - 1) })
-                                    }>{timeBased ? '−5' : '−1'}</button>
-                                    <input
-                                      className="focus-input"
-                                      type="number"
-                                      inputMode="numeric"
-                                      placeholder="—"
-                                      value={timeBased ? (set.time ?? '') : (set.reps ?? '')}
-                                      onChange={e => {
-                                        const v = e.target.value ? parseInt(e.target.value) : null;
-                                        timeBased
-                                          ? updateSet(group.id, block.id, si, { time: v })
-                                          : updateSet(group.id, block.id, si, { reps: v });
-                                      }}
-                                    />
-                                    <button className="nudge-btn" onClick={() => timeBased
-                                      ? updateSet(group.id, block.id, si, { time: (set.time ?? 0) + 5 })
-                                      : updateSet(group.id, block.id, si, { reps: (set.reps ?? 0) + 1 })
-                                    }>{timeBased ? '+5' : '+1'}</button>
+                                {/* Reps — for non-time-based */}
+                                {!timeBased && (
+                                  <div className="focus-field">
+                                    <div className="focus-field__label">Reps</div>
+                                    <div className="focus-field__row">
+                                      <button className="nudge-btn" onClick={() => updateSet(group.id, block.id, si, { reps: Math.max(1, (set.reps ?? 0) - 1) })}>−1</button>
+                                      <input
+                                        className="focus-input"
+                                        type="number"
+                                        inputMode="numeric"
+                                        placeholder="—"
+                                        value={set.reps ?? ''}
+                                        onChange={e => updateSet(group.id, block.id, si, { reps: e.target.value ? parseInt(e.target.value) : null })}
+                                      />
+                                      <button className="nudge-btn" onClick={() => updateSet(group.id, block.id, si, { reps: (set.reps ?? 0) + 1 })}>+1</button>
+                                    </div>
                                   </div>
-                                </div>
+                                )}
+
+                                {/* Time — only for time-based */}
+                                {timeBased && (
+                                  <div className="focus-field">
+                                    <div className="focus-field__label">Time (s)</div>
+                                    <div className="focus-field__row">
+                                      <button className="nudge-btn" onClick={() => updateSet(group.id, block.id, si, { time: Math.max(1, (set.time ?? 0) - 5) })}>−5</button>
+                                      <input
+                                        className="focus-input"
+                                        type="number"
+                                        inputMode="numeric"
+                                        placeholder="—"
+                                        value={set.time ?? ''}
+                                        onChange={e => updateSet(group.id, block.id, si, { time: e.target.value ? parseInt(e.target.value) : null })}
+                                      />
+                                      <button className="nudge-btn" onClick={() => updateSet(group.id, block.id, si, { time: (set.time ?? 0) + 5 })}>+5</button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
 
                               <button

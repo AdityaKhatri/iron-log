@@ -11,12 +11,14 @@ import './Plan.css';
 const now = new Date();
 const TODAY_STR = toISODate(now);
 
+type PlanTab = 'calendar' | 'schedule';
+
 export function PlanView() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [calendarCollapsed, setCalendarCollapsed] = useState(false);
+  const [tab, setTab] = useState<PlanTab>('calendar');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const { days, reload } = useAllPlanDays();
@@ -82,19 +84,16 @@ export function PlanView() {
 
   const workoutMap = new Map(workouts.map(w => [w.id, w]));
 
-  // Sessions keyed by date for list view
   const sessionsByDate = new Map<string, Session[]>();
   for (const s of allSessions) {
     if (!sessionsByDate.has(s.date)) sessionsByDate.set(s.date, []);
     sessionsByDate.get(s.date)!.push(s);
   }
 
-  // Build sorted list of dates that have plan entries or sessions
   const listDates = Array.from(
     new Set([...days.keys(), ...sessionsByDate.keys()])
   ).sort();
 
-  // Which workoutIds are already done for a given date (have a finished session)?
   function doneWorkoutIdsForDate(date: string): Set<string> {
     const sessions = sessionsByDate.get(date) ?? [];
     const doneIds = new Set<string>();
@@ -108,44 +107,60 @@ export function PlanView() {
     <div className="plan-view">
       {/* Header */}
       <div className="plan-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+        <div className="plan-header__nav">
           <button className="icon-btn" onClick={prevMonth} aria-label="Previous month">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="plan-month" style={{ flex: 1, textAlign: 'center' }}>{monthName}</span>
+          <span className="plan-month">{monthName}</span>
           <button className="icon-btn" onClick={nextMonth} aria-label="Next month">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
         </div>
-        <div className="plan-header-actions">
+        <div className="plan-header__right">
           <button className="btn outline btn-sm" onClick={goToToday}>Today</button>
-          <button
-            className="icon-btn"
-            onClick={() => setCalendarCollapsed(c => !c)}
-            aria-label={calendarCollapsed ? 'Expand calendar' : 'Collapse calendar'}
-          >
-            <svg
-              width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ transform: calendarCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 200ms ease' }}
+          <div className="plan-tabs">
+            <button
+              className={`plan-tab${tab === 'calendar' ? ' plan-tab--active' : ''}`}
+              onClick={() => setTab('calendar')}
             >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              Cal
+            </button>
+            <button
+              className={`plan-tab${tab === 'schedule' ? ' plan-tab--active' : ''}`}
+              onClick={() => setTab('schedule')}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              List
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Calendar (collapsible) */}
-      {!calendarCollapsed && (
-        <div className="plan-calendar-section">
+      {/* ── Calendar tab ── */}
+      {tab === 'calendar' && (
+        <div className="plan-cal-tab">
+          {/* Weekday labels */}
           <div className="plan-weekdays">
             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
               <div key={d} className="plan-weekday">{d}</div>
             ))}
           </div>
+
+          {/* Calendar grid */}
           <div className="plan-cal-wrap">
             <div className="cal-grid">
               {cells.map((day, i) => {
@@ -163,7 +178,6 @@ export function PlanView() {
                     key={dateStr}
                     className={`cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`}
                     onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                    style={{ cursor: 'pointer' }}
                   >
                     <span className="cal-num">{day}</span>
                     {planDay && planDay.workouts.map(pw => {
@@ -171,7 +185,7 @@ export function PlanView() {
                       const done = doneIds.has(pw.workoutId);
                       return (
                         <div key={pw.workoutId} className={`cal-pill${done ? ' cal-pill--done' : ''}`}>
-                          {done && '✓ '}{w?.name ?? '·'}
+                          {w?.name ?? '·'}
                         </div>
                       );
                     })}
@@ -183,84 +197,84 @@ export function PlanView() {
               })}
             </div>
           </div>
+
+          {/* Day panel — scrollable below calendar */}
+          <div className="plan-cal-day-scroll" ref={listRef}>
+            {selectedDate ? (
+              <div className="plan-day-panel">
+                <div className="plan-day-panel__header">
+                  <span className="plan-day-panel__date">{formatDisplayDate(selectedDate)}</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn primary btn-sm" onClick={() => setPickerOpen(true)}>+ Add</button>
+                    <button className="icon-btn" onClick={() => setSelectedDate(null)} aria-label="Close">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                {(() => {
+                  const planDay = days.get(selectedDate);
+                  const doneIds = doneWorkoutIdsForDate(selectedDate);
+                  const daySessions = sessionsByDate.get(selectedDate) ?? [];
+                  const hasPlanned = planDay && planDay.workouts.length > 0;
+                  const unplannedSessions = daySessions.filter(s => s.unplanned && s.finishedAt);
+                  if (!hasPlanned && unplannedSessions.length === 0) {
+                    return (
+                      <p className="plan-day-empty">No workouts planned. Tap "+ Add" to schedule one.</p>
+                    );
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {planDay && planDay.workouts.map(pw => {
+                        const workout = workoutMap.get(pw.workoutId);
+                        const isDone = doneIds.has(pw.workoutId);
+                        return (
+                          <div key={pw.workoutId} className={`plan-workout-row${isDone ? ' plan-workout-row--done' : ''}`}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="plan-workout-row__name">
+                                {isDone && <span className="plan-done-check">✓ </span>}
+                                {workout?.name ?? pw.workoutId}
+                              </div>
+                              <div className="plan-workout-row__meta">
+                                {workout ? `${workout.groups.length} groups · ${workout.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises` : ''}
+                                {isDone ? ' · Done' : ''}
+                              </div>
+                            </div>
+                            <button className="icon-btn" onClick={() => removeWorkoutFromDay(selectedDate, pw.workoutId)} aria-label="Remove">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {unplannedSessions.map(s => (
+                        <div key={s.id} className="plan-workout-row plan-workout-row--unplanned">
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="plan-workout-row__name">{s.workoutName}</div>
+                            <div className="plan-workout-row__meta">Freestyle{s.durationMs ? ` · ${formatDuration(s.durationMs)}` : ''}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              <p className="plan-cal-hint">Tap a date to view or plan workouts</p>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Scrollable body: day panel (if selected) + list */}
-      <div className="plan-body" ref={listRef}>
-
-        {/* Selected day panel */}
-        {selectedDate && (
-          <div className="plan-day-panel" style={{ flex: 'none' }}>
-            <div className="plan-day-panel__header">
-              <span className="plan-day-panel__date">{formatDisplayDate(selectedDate)}</span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn primary btn-sm" onClick={() => setPickerOpen(true)}>+ Add</button>
-                <button className="icon-btn" onClick={() => setSelectedDate(null)} aria-label="Close">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            {(() => {
-              const planDay = days.get(selectedDate);
-              const doneIds = doneWorkoutIdsForDate(selectedDate);
-              const daySessions = sessionsByDate.get(selectedDate) ?? [];
-              const hasPlanned = planDay && planDay.workouts.length > 0;
-              const unplannedSessions = daySessions.filter(s => s.unplanned && s.finishedAt);
-              if (!hasPlanned && unplannedSessions.length === 0) {
-                return (
-                  <p style={{ color: 'var(--fg-mute)', fontFamily: 'var(--mono)', fontSize: 11, letterSpacing: '0.08em' }}>
-                    No workouts planned. Tap "+ Add" to schedule one.
-                  </p>
-                );
-              }
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {planDay && planDay.workouts.map(pw => {
-                    const workout = workoutMap.get(pw.workoutId);
-                    const isDone = doneIds.has(pw.workoutId);
-                    return (
-                      <div key={pw.workoutId} className={`plan-workout-row${isDone ? ' plan-workout-row--done' : ''}`}>
-                        <div>
-                          <div className="plan-workout-row__name">
-                            {isDone && <span className="plan-done-check">✓ </span>}
-                            {workout?.name ?? pw.workoutId}
-                          </div>
-                          <div className="plan-workout-row__meta">
-                            {workout ? `${workout.groups.length} groups · ${workout.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises` : ''}
-                            {isDone ? ' · Done' : ''}
-                          </div>
-                        </div>
-                        <button className="icon-btn" onClick={() => removeWorkoutFromDay(selectedDate, pw.workoutId)} aria-label="Remove">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {unplannedSessions.map(s => (
-                    <div key={s.id} className="plan-workout-row plan-workout-row--unplanned">
-                      <div>
-                        <div className="plan-workout-row__name">{s.workoutName}</div>
-                        <div className="plan-workout-row__meta">Freestyle{s.durationMs ? ` · ${formatDuration(s.durationMs)}` : ''}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* Always-visible list */}
-        <div className="plan-list" style={{ flex: 1 }}>
+      {/* ── Schedule tab ── */}
+      {tab === 'schedule' && (
+        <div className="plan-list" ref={listRef}>
           {listDates.length === 0 ? (
             <div className="empty-state" style={{ padding: '48px 0' }}>
               <h3>Nothing planned yet</h3>
-              <p>Tap a date on the calendar to schedule workouts.</p>
+              <p>Switch to Calendar and tap a date to schedule workouts.</p>
             </div>
           ) : (
             listDates.map(dateStr => {
@@ -269,20 +283,16 @@ export function PlanView() {
               const doneIds = doneWorkoutIdsForDate(dateStr);
               const isToday = dateStr === TODAY_STR;
               const isPast = dateStr < TODAY_STR;
-              const isSelected = dateStr === selectedDate;
               return (
                 <div
                   key={dateStr}
-                  className={`plan-list-day${isToday ? ' plan-list-day--today' : ''}${isPast ? ' plan-list-day--past' : ''}${isSelected ? ' plan-list-day--selected' : ''}`}
+                  className={`plan-list-day${isToday ? ' plan-list-day--today' : ''}${isPast ? ' plan-list-day--past' : ''}`}
                   data-today={isToday ? 'true' : undefined}
                   data-date={dateStr}
-                  onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                  style={{ cursor: 'pointer' }}
                 >
                   <div className="plan-list-day__header">
                     <span className="plan-list-day__date">{formatDisplayDate(dateStr)}</span>
                     {isToday && <span className="plan-list-today-chip">Today</span>}
-                    {isSelected && <span className="plan-list-selected-chip">Selected</span>}
                   </div>
                   <div className="plan-list-day__entries">
                     {planDay && planDay.workouts.map(pw => {
@@ -291,7 +301,7 @@ export function PlanView() {
                       return (
                         <div key={pw.workoutId} className={`plan-list-entry${isDone ? ' plan-list-entry--done' : ''}`}>
                           <div className={`plan-list-entry__dot${isDone ? ' done' : ''}`} />
-                          <div style={{ flex: 1 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <div className="plan-list-entry__name">{workout?.name ?? pw.workoutId}</div>
                             <div className="plan-list-entry__meta">
                               {workout ? `${workout.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises` : ''}
@@ -306,7 +316,7 @@ export function PlanView() {
                       .map(s => (
                         <div key={s.id} className="plan-list-entry plan-list-entry--logged">
                           <div className="plan-list-entry__dot done" />
-                          <div style={{ flex: 1 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <div className="plan-list-entry__name">{s.workoutName}</div>
                             <div className="plan-list-entry__meta">
                               {s.unplanned ? 'Freestyle' : 'Completed'}
@@ -321,7 +331,7 @@ export function PlanView() {
             })
           )}
         </div>
-      </div>
+      )}
 
       <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title="Add Workout" size="md">
         {workouts.length === 0 ? (
