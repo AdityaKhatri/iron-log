@@ -46,7 +46,7 @@ export function ScanModal({ onDetected, onClose }: Props) {
     function tick() {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      if (!video || !canvas || video.readyState < 2) {
+      if (!video || !canvas || video.readyState < 2 || video.videoWidth === 0) {
         rafRef.current = requestAnimationFrame(tick);
         return;
       }
@@ -56,7 +56,9 @@ export function ScanModal({ onDetected, onClose }: Props) {
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(video, 0, 0);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const result = jsQR(imageData.data, canvas.width, canvas.height);
+      const result = jsQR(imageData.data, canvas.width, canvas.height, {
+        inversionAttempts: 'attemptBoth',
+      });
 
       if (result?.data && !detectedRef.current) {
         detectedRef.current = true;

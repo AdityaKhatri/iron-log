@@ -1,4 +1,4 @@
-const CACHE = 'iron-log-v5';
+const CACHE = 'iron-log-v6';
 
 const SHELL = [
   '/iron-log/',
@@ -9,7 +9,12 @@ const SHELL = [
 // ── Install ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
-  self.skipWaiting(); // activate immediately — network-first HTML handles safe updates
+  // Do NOT skipWaiting — wait for user to approve the reload via the banner.
+});
+
+// ── Message: app triggers skip when user taps "Refresh" ───────────────────────
+self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 // ── Activate: prune old caches, claim all clients ─────────────────────────────

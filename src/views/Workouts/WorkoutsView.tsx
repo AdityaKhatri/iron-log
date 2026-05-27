@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getAllWorkouts, putWorkout } from '../../db/workouts';
+import { getAllWorkouts, putWorkout, deleteWorkout } from '../../db/workouts';
 import { getAllExercises } from '../../db/exercises';
 import { Modal } from '../../components/Modal/Modal';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
@@ -28,6 +28,13 @@ export function WorkoutsView() {
   const [importState, setImportState] = useState<{ payload: SharePayload; preview: ImportPreview } | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // workout id
+
+  async function handleDelete(id: string) {
+    await deleteWorkout(id);
+    setConfirmDelete(null);
+    setWorkouts(prev => prev.filter(w => w.id !== id));
+  }
 
   async function handleScanDetected(raw: string) {
     setScanning(false);
@@ -180,7 +187,7 @@ export function WorkoutsView() {
           </div>
         ) : (
           workouts.map(w => (
-            <div key={w.id} className="workout-card" onClick={() => setEditing(w)}>
+            <div key={w.id} className="workout-card" onClick={() => confirmDelete !== w.id && setEditing(w)}>
               <div className="workout-card__info">
                 <div className="workout-card__name">{w.name}</div>
                 <div className="workout-card__meta">
@@ -188,20 +195,40 @@ export function WorkoutsView() {
                   {w.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises
                 </div>
               </div>
-              <button
-                className="icon-btn"
-                aria-label="Share workout"
-                onClick={e => { e.stopPropagation(); setSharing(w); }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                </svg>
-              </button>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--fg-mute)" strokeWidth="2">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
+
+              {confirmDelete === w.id ? (
+                <div className="workout-card__delete-confirm" onClick={e => e.stopPropagation()}>
+                  <span className="workout-card__delete-label">Delete?</span>
+                  <button className="btn btn-sm" style={{ color: '#fc8181', borderColor: '#5a2d2d' }} onClick={() => handleDelete(w.id)}>Yes</button>
+                  <button className="btn btn-sm" onClick={() => setConfirmDelete(null)}>No</button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    className="icon-btn"
+                    aria-label="Share workout"
+                    onClick={e => { e.stopPropagation(); setSharing(w); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                  </button>
+                  <button
+                    className="icon-btn"
+                    aria-label="Delete workout"
+                    onClick={e => { e.stopPropagation(); setConfirmDelete(w.id); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                  </button>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--fg-mute)" strokeWidth="2">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </>
+              )}
             </div>
           ))
         )}

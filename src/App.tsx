@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useActiveSession } from './context/ActiveSessionContext';
 import { BottomNav } from './components/BottomNav/BottomNav';
 import { TodayView } from './views/Today/TodayView';
@@ -47,9 +47,50 @@ function SplashScreen() {
   );
 }
 
+// ─── SW update detection ──────────────────────────────────────────────────────
+
+function useUpdatePrompt() {
+  const [waitingSW, setWaitingSW] = useState<ServiceWorker | null>(null);
+  const refreshing = useRef(false);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    // Reload once the new SW takes the controller slot (after SKIP_WAITING)
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing.current) { refreshing.current = true; window.location.reload(); }
+    });
+
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (!reg) return;
+      // New SW already waiting (e.g. user had tab open during deploy)
+      if (reg.waiting) { setWaitingSW(reg.waiting); return; }
+      // New SW installs while app is open
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            setWaitingSW(sw);
+          }
+        });
+      });
+      // Trigger an update check each time the app opens
+      reg.update().catch(() => {/* offline, ignore */});
+    });
+  }, []);
+
+  const applyUpdate = useCallback(() => {
+    waitingSW?.postMessage({ type: 'SKIP_WAITING' });
+  }, [waitingSW]);
+
+  return { updateAvailable: !!waitingSW, applyUpdate };
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export function App() {
+  const { updateAvailable, applyUpdate } = useUpdatePrompt();
   const [onboardingDone, setOnboardingDoneState] = useState<boolean | null>(null);
   const [view, setView] = useState<ViewId>('today');
   const [importState, setImportState] = useState<{
@@ -60,16 +101,6 @@ export function App() {
 
   useEffect(() => {
     getOnboardingDone().then(done => setOnboardingDoneState(done));
-  }, []);
-
-  // Auto-reload when a new SW takes over (skipWaiting fires in sw.js on install)
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
-    const hadController = !!navigator.serviceWorker.controller;
-    let reloading = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (hadController && !reloading) { reloading = true; window.location.reload(); }
-    });
   }, []);
 
   // Detect #import= fragment and prepare the confirmation sheet
@@ -128,6 +159,45 @@ export function App() {
           {view === 'editor'   && <ExerciseEditorView onBack={() => setView('library')} />}
         </main>
         <ConditionalNav current={navView} onChange={setView} />
+
+        {/* Update available banner */}
+        {updateAvailable && (
+          <div style={{
+            position: 'fixed',
+            top: 'env(safe-area-inset-top, 0px)',
+            left: 0, right: 0,
+            background: 'var(--surface-2)',
+            borderBottom: '1px solid var(--line-2)',
+            color: 'var(--fg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 16px',
+            fontFamily: 'var(--mono)',
+            fontSize: 12,
+            letterSpacing: '0.04em',
+            zIndex: 500,
+          }}>
+            <span>Update available</span>
+            <button
+              onClick={applyUpdate}
+              style={{
+                background: 'var(--accent)',
+                color: '#0a0a0c',
+                border: 'none',
+                borderRadius: 4,
+                padding: '5px 12px',
+                fontFamily: 'var(--mono)',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                cursor: 'pointer',
+              }}
+            >
+              RELOAD
+            </button>
+          </div>
+        )}
 
         {/* Import confirmation sheet */}
         {importState && (

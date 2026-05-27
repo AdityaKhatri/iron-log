@@ -52,8 +52,8 @@ export function ShareModal({ workout, onClose }: Props) {
       width: 280,
       margin: 2,
       color: {
-        dark: '#f5f2eb',
-        light: '#15151a',
+        dark: '#000000',
+        light: '#ffffff',
       },
     }).catch((e: unknown) => {
       setErrorMsg(e instanceof Error ? e.message : 'Failed to render QR');
