@@ -8,6 +8,7 @@ import { ToastContainer, useToast } from '../../components/Toast/Toast';
 import { ShareModal } from '../../components/ShareModal/ShareModal';
 import { ScanModal } from '../../components/ScanModal/ScanModal';
 import { ImportSheet } from '../../components/ImportSheet/ImportSheet';
+import { AIImportSheet } from '../../components/AIImportSheet/AIImportSheet';
 import { decodeWorkoutPayload, previewImport } from '../../lib/share';
 import type { SharePayload, ImportPreview } from '../../lib/share';
 import { uid } from '../../lib/ids';
@@ -29,6 +30,7 @@ export function WorkoutsView() {
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // workout id
+  const [aiImporting, setAiImporting] = useState(false);
 
   async function handleDelete(id: string) {
     await deleteWorkout(id);
@@ -100,6 +102,12 @@ export function WorkoutsView() {
       <div className="workouts-header">
         <span className="crumb">Workouts</span>
         <div style={{ display: 'flex', gap: 4 }}>
+          <button className="icon-btn" onClick={() => setAiImporting(true)} aria-label="Import from AI" title="Import from AI">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 0 6h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1 0-6h1V6a4 4 0 0 1 4-4z"/>
+              <line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/>
+            </svg>
+          </button>
           <button className="icon-btn" onClick={() => setScanning(true)} aria-label="Scan QR code" title="Scan QR code">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -125,6 +133,18 @@ export function WorkoutsView() {
 
       {scanning && (
         <ScanModal onDetected={handleScanDetected} onClose={() => setScanning(false)} />
+      )}
+
+      {aiImporting && (
+        <AIImportSheet
+          onDone={name => {
+            setAiImporting(false);
+            setImportSuccess(name);
+            getAllWorkouts().then(w => setWorkouts(w.filter(x => !x.archived)));
+            setTimeout(() => setImportSuccess(null), 4000);
+          }}
+          onCancel={() => setAiImporting(false)}
+        />
       )}
 
       {importState && (
