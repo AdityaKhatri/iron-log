@@ -9,6 +9,7 @@ import { ShareModal } from '../../components/ShareModal/ShareModal';
 import { ScanModal } from '../../components/ScanModal/ScanModal';
 import { ImportSheet } from '../../components/ImportSheet/ImportSheet';
 import { AIImportSheet } from '../../components/AIImportSheet/AIImportSheet';
+import { LogoMark } from '../../components/Logo/Logo';
 import { decodeWorkoutPayload, previewImport } from '../../lib/share';
 import type { SharePayload, ImportPreview } from '../../lib/share';
 import { uid } from '../../lib/ids';
@@ -23,6 +24,7 @@ const GROUP_CLASS: Record<string, string> = {
 export function WorkoutsView() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewing, setViewing] = useState<Workout | null>(null);
   const [editing, setEditing] = useState<Workout | null>(null);
   const [sharing, setSharing] = useState<Workout | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -92,14 +94,26 @@ export function WorkoutsView() {
       <WorkoutEditor
         workout={editing}
         onSave={saveWorkout}
-        onBack={() => setEditing(null)}
+        onBack={() => { setEditing(null); setViewing(editing); }}
+        onDiscard={() => setEditing(null)}
+      />
+    );
+  }
+
+  if (viewing) {
+    return (
+      <WorkoutViewer
+        workout={viewing}
+        onBack={() => setViewing(null)}
+        onEdit={() => { setEditing(viewing); setViewing(null); }}
       />
     );
   }
 
   return (
     <div className="workouts-view">
-      <div className="workouts-header">
+      <div className="topbar">
+        <LogoMark size={20} />
         <span className="crumb">Workouts</span>
         <div style={{ display: 'flex', gap: 4 }}>
           <button className="icon-btn" onClick={() => setAiImporting(true)} aria-label="Import from AI" title="Import from AI">
@@ -125,7 +139,7 @@ export function WorkoutsView() {
             </svg>
           </button>
         </div>
-      </div>
+      </div> {/* end topbar */}
 
       {sharing && (
         <ShareModal workout={sharing} onClose={() => setSharing(null)} />
@@ -207,7 +221,7 @@ export function WorkoutsView() {
           </div>
         ) : (
           workouts.map(w => (
-            <div key={w.id} className="workout-card" onClick={() => confirmDelete !== w.id && setEditing(w)}>
+            <div key={w.id} className="workout-card" onClick={() => confirmDelete !== w.id && setViewing(w)}>
               <div className="workout-card__info">
                 <div className="workout-card__name">{w.name}</div>
                 <div className="workout-card__meta">
@@ -252,6 +266,69 @@ export function WorkoutsView() {
             </div>
           ))
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Workout Viewer (read-only) ───────────────────────────────────────────────
+
+function WorkoutViewer({ workout, onBack, onEdit }: {
+  workout: Workout;
+  onBack: () => void;
+  onEdit: () => void;
+}) {
+  const [exerciseMap, setExerciseMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    getAllExercises().then(all => setExerciseMap(new Map(all.map(e => [e.id, e.name]))));
+  }, []);
+
+  return (
+    <div className="workout-editor">
+      <div className="workout-editor__header">
+        <button className="icon-btn" onClick={onBack} aria-label="Back">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <span className="crumb" style={{ flex: 1, paddingLeft: 8 }}>{workout.name}</span>
+        <button className="btn primary btn-sm" onClick={onEdit}>Edit</button>
+      </div>
+
+      <div className="workout-editor__body">
+        {workout.notes && (
+          <div style={{ padding: '0 20px 16px', color: 'var(--fg-dim)', fontSize: 14, lineHeight: 1.55 }}>
+            {workout.notes}
+          </div>
+        )}
+        {workout.groups.map(group => {
+          const groupClass = GROUP_CLASS[group.groupType] ?? 'g-main';
+          return (
+            <div key={group.id} className={`group ${groupClass} group-editor`}>
+              <div className="group-head group-editor__header">
+                <span className="gname">{group.name}</span>
+                <span className="gmeta" style={{ marginLeft: 'auto' }}>{group.blocks.length} exercise{group.blocks.length !== 1 ? 's' : ''}</span>
+              </div>
+              {group.blocks.length === 0 && (
+                <div style={{ color: 'var(--fg-mute)', fontFamily: 'var(--mono)', fontSize: 11, padding: '6px 0 8px', letterSpacing: '0.08em' }}>
+                  No exercises
+                </div>
+              )}
+              {group.blocks.map(block => (
+                <div key={block.id} className="viewer-block-row">
+                  <span className="block-row__name">{exerciseMap.get(block.exerciseId) ?? block.exerciseId}</span>
+                  <div className="viewer-block-row__targets">
+                    {block.targetSets != null && <span className="viewer-target">{block.targetSets} sets</span>}
+                    {block.targetReps != null && <span className="viewer-target">{block.targetReps} reps</span>}
+                    {block.targetWeight != null && <span className="viewer-target">{block.targetWeight} kg</span>}
+                    {block.targetTime != null && <span className="viewer-target">{block.targetTime}s</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -378,10 +455,11 @@ function BlockRow({ block, exerciseName, onRemove, onChange }: {
 
 // ─── Workout Editor ───────────────────────────────────────────────────────────
 
-function WorkoutEditor({ workout, onSave, onBack }: {
+function WorkoutEditor({ workout, onSave, onBack, onDiscard }: {
   workout: Workout;
   onSave: (w: Workout) => Promise<void>;
   onBack: () => void;
+  onDiscard: () => void;
 }) {
   const [name, setName] = useState(workout.name);
   const [notes, setNotes] = useState(workout.notes);
@@ -478,14 +556,11 @@ function WorkoutEditor({ workout, onSave, onBack }: {
           </svg>
         </button>
         <span className="crumb" style={{ flex: 1, paddingLeft: 8 }}>{name || 'Workout'}</span>
-        <button
-          className="btn primary btn-sm"
-          style={{ flex: 'none', opacity: dirty ? 1 : 0.35, transition: 'opacity 200ms ease' }}
-          onClick={save}
-          disabled={!dirty || saving}
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
+        {dirty && (
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--accent)', letterSpacing: '0.1em' }}>
+            UNSAVED
+          </span>
+        )}
       </div>
 
       <div className="workout-editor__body">
@@ -577,6 +652,20 @@ function WorkoutEditor({ workout, onSave, onBack }: {
             Add Group
           </button>
         </div>
+      </div>
+
+      <div className="workout-editor__footer">
+        <button className="btn btn-full" onClick={dirty ? onDiscard : onBack} disabled={saving}>
+          {dirty ? 'Discard' : 'Done'}
+        </button>
+        <button
+          className="btn primary btn-full"
+          onClick={save}
+          disabled={!dirty || saving}
+          style={{ opacity: dirty ? 1 : 0.35, transition: 'opacity 200ms ease' }}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
       </div>
 
       <ExercisePicker

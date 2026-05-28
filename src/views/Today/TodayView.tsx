@@ -64,6 +64,7 @@ export function TodayView() {
   const { streak, thisWeek, allTime } = useQuickStats();
   // Finished sessions logged today, keyed by workoutId
   const [doneSessions, setDoneSessions] = useState<Map<string, Session>>(new Map());
+  const [viewingWorkout, setViewingWorkout] = useState<Workout | null>(null);
 
   // Load finished sessions for today to detect which planned workouts are done
   useEffect(() => {
@@ -176,6 +177,7 @@ export function TodayView() {
                   doneSession={doneSession}
                   onStart={() => startFromTemplate(pw.workoutId)}
                   onEdit={() => resumeSession(doneSession!)}
+                  onView={w => setViewingWorkout(w)}
                 />
               );
             })}
