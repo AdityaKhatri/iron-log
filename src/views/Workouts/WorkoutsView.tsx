@@ -137,9 +137,9 @@ export function WorkoutsView() {
 
       {aiImporting && (
         <AIImportSheet
-          onDone={name => {
+          onDone={names => {
             setAiImporting(false);
-            setImportSuccess(name);
+            setImportSuccess(names.length === 1 ? names[0] : `${names.length} workouts`);
             getAllWorkouts().then(w => setWorkouts(w.filter(x => !x.archived)));
             setTimeout(() => setImportSuccess(null), 4000);
           }}
