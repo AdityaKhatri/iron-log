@@ -43,6 +43,116 @@ export interface SharePayload {
   customExercises?: SharePayloadCustomExercise[];
 }
 
+// ─── Compact v2 wire format ───────────────────────────────────────────────────
+// Single-letter keys + omit null/empty fields → significantly smaller JSON →
+// lower QR version (e.g. v25 instead of v40) → actually scannable.
+
+interface V2Block {
+  e: string;       // exerciseId
+  s?: number;      // targetSets
+  r?: string;      // targetReps
+  w?: number;      // targetWeight
+  i?: number;      // targetTime
+  d?: number;      // targetDistance
+  x?: number;      // restSec
+  o?: string;      // notes
+}
+
+interface V2Group {
+  n: string;       // name
+  t: string;       // groupType
+  b: V2Block[];    // blocks
+}
+
+interface V2CustomExercise {
+  i: string;       // id
+  n: string;       // name
+  m: string;       // muscleGroup
+  s: string[];     // secondaryMuscles
+  e: string;       // equipment
+  c: string;       // category
+  u?: string;      // defaultUnit
+}
+
+interface V2Payload {
+  v: 2;
+  w: { n: string; o?: string; g: V2Group[] };
+  c?: V2CustomExercise[];
+}
+
+function toV2(payload: SharePayload): V2Payload {
+  const def = (x: string | null | undefined) => (x && x.trim()) ? x : undefined;
+  const num = (x: number | null | undefined) => (x != null) ? x : undefined;
+
+  return {
+    v: 2,
+    w: {
+      n: payload.workout.name,
+      ...(payload.workout.notes?.trim() ? { o: payload.workout.notes } : {}),
+      g: payload.workout.groups.map(g => ({
+        n: g.name,
+        t: g.groupType,
+        b: g.blocks.map(b => ({
+          e: b.exerciseId,
+          ...(num(b.targetSets) !== undefined ? { s: b.targetSets! } : {}),
+          ...(def(b.targetReps) ? { r: b.targetReps! } : {}),
+          ...(num(b.targetWeight) !== undefined ? { w: b.targetWeight! } : {}),
+          ...(num(b.targetTime) !== undefined ? { i: b.targetTime! } : {}),
+          ...(num(b.targetDistance) !== undefined ? { d: b.targetDistance! } : {}),
+          ...(num(b.restSec) !== undefined ? { x: b.restSec! } : {}),
+          ...(def(b.notes) ? { o: b.notes } : {}),
+        })),
+      })),
+    },
+    ...(payload.customExercises?.length ? {
+      c: payload.customExercises.map(ce => ({
+        i: ce.id,
+        n: ce.name,
+        m: ce.muscleGroup,
+        s: ce.secondaryMuscles,
+        e: ce.equipment,
+        c: ce.category,
+        ...(ce.defaultUnit ? { u: ce.defaultUnit } : {}),
+      })),
+    } : {}),
+  };
+}
+
+function fromV2(p: V2Payload): SharePayload {
+  return {
+    v: 1,
+    workout: {
+      name: p.w.n,
+      notes: p.w.o ?? '',
+      groups: p.w.g.map(g => ({
+        name: g.n,
+        groupType: g.t,
+        blocks: g.b.map(b => ({
+          exerciseId: b.e,
+          targetSets: b.s ?? null,
+          targetReps: b.r ?? null,
+          targetWeight: b.w ?? null,
+          targetTime: b.i ?? null,
+          targetDistance: b.d ?? null,
+          restSec: b.x ?? null,
+          notes: b.o ?? '',
+        })),
+      })),
+    },
+    ...(p.c?.length ? {
+      customExercises: p.c.map(ce => ({
+        id: ce.i,
+        name: ce.n,
+        muscleGroup: ce.m,
+        secondaryMuscles: ce.s,
+        equipment: ce.e,
+        category: ce.c,
+        defaultUnit: ce.u ?? null,
+      })),
+    } : {}),
+  };
+}
+
 // ─── Compression + base64url ──────────────────────────────────────────────────
 
 async function compress(text: string): Promise<Uint8Array> {
@@ -75,16 +185,18 @@ function fromBase64Url(str: string): Uint8Array {
 }
 
 export async function encodeWorkoutPayload(payload: SharePayload): Promise<string> {
-  const compressed = await compress(JSON.stringify(payload));
+  // Encode as compact v2 to minimise QR code density
+  const compressed = await compress(JSON.stringify(toV2(payload)));
   return toBase64Url(compressed);
 }
 
 export async function decodeWorkoutPayload(encoded: string): Promise<SharePayload> {
   const bytes = fromBase64Url(encoded);
   const json = await decompress(bytes);
-  const payload = JSON.parse(json) as SharePayload;
-  if (payload.v !== 1) throw new Error(`Unsupported payload version: ${payload.v}`);
-  return payload;
+  const raw = JSON.parse(json) as { v: number };
+  if (raw.v === 2) return fromV2(raw as V2Payload);
+  if (raw.v === 1) return raw as SharePayload;
+  throw new Error(`Unsupported payload version: ${raw.v}`);
 }
 
 // ─── Build payload from a local Workout ──────────────────────────────────────

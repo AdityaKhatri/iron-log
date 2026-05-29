@@ -46,7 +46,7 @@ export function ScanModal({ onDetected, onClose }: Props) {
     };
   }, []);
 
-  function captureAndScan() {
+  async function captureAndScan() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || video.readyState < 2 || video.videoWidth === 0) return;
@@ -54,6 +54,27 @@ export function ScanModal({ onDetected, onClose }: Props) {
     setStatus('scanning');
     setNotFound(false);
 
+    // Prefer the native BarcodeDetector API — far more capable than jsQR for
+    // dense QR codes (version 40 / 177×177 modules from large payloads).
+    // Available in Chrome 83+, Edge 83+, Safari 17.4+.
+    if ('BarcodeDetector' in window) {
+      try {
+        const detector = new (window as { BarcodeDetector: new (opts: { formats: string[] }) => { detect(src: ImageBitmapSource): Promise<Array<{ rawValue: string }>> } }).BarcodeDetector({ formats: ['qr_code'] });
+        const bitmap = await createImageBitmap(video);
+        const barcodes = await detector.detect(bitmap);
+        bitmap.close();
+        if (barcodes.length > 0) {
+          streamRef.current?.getTracks().forEach(t => t.stop());
+          onDetected(barcodes[0].rawValue);
+          return;
+        }
+        // No barcode found via native API — fall through to jsQR
+      } catch {
+        // API unavailable or failed — fall through to jsQR
+      }
+    }
+
+    // jsQR fallback (pure-JS, works everywhere but less accurate on dense codes)
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d')!;
