@@ -738,3 +738,217 @@
   font-style: italic;
   border-top: 1px solid var(--line);
 }
+
+/* ─── Nutrition section ───────────────────────────────────────────────────── */
+.nutrition-section {
+  padding: 0 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.nutrition-header {
+  display: flex;
+  align-items: center;
+}
+
+.nutrition-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--fg-mute);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.nutrition-add-btn:hover { color: var(--fg); }
+
+.nutrition-total {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.nutrition-consumed {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--fg);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.nutrition-consumed--over { color: #E53E3E; }
+
+.nutrition-goal-label {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--fg-mute);
+  letter-spacing: 0.04em;
+}
+
+.nutrition-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.nutrition-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 400ms ease;
+}
+
+.nutrition-bar__fill--over { background: #E53E3E; }
+
+.nutrition-empty {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-mute);
+}
+
+.nutrition-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nutrition-log-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.nutrition-log-row__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nutrition-log-row__name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nutrition-log-row__notes {
+  font-family: var(--body);
+  font-size: 11px;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nutrition-log-row__kcal {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg-dim);
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+/* ─── Add Meal bottom sheet ───────────────────────────────────────────────── */
+.meal-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.meal-sheet {
+  width: 100%;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 12px 12px 0 0;
+  padding: 20px 20px calc(20px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.meal-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.meal-sheet__title {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.meal-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.meal-chip {
+  padding: 5px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--fg-dim);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.meal-chip:hover { border-color: var(--line-2); color: var(--fg); }
+
+.meal-chip.active {
+  background: rgba(255, 90, 31, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.meal-field { display: flex; flex-direction: column; }
+
+.meal-kcal-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.meal-kcal-input { flex: 1; }
+
+.meal-kcal-unit {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--fg-mute);
+  flex-shrink: 0;
+}
+
+.meal-sheet__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}

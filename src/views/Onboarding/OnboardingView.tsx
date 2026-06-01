@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { LogoFull } from '../../components/Logo/Logo';
 import { useSyncContext } from '../../context/SyncContext';
-import { getProfile, setProfile } from '../../db/meta';
-import type { UserProfile } from '../../types';
+import { getProfile, setProfile } from '../../db/profile';
 import './Onboarding.css';
 
 interface OnboardingViewProps {
@@ -247,8 +246,7 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
     setSaving(true);
     try {
       const existing = await getProfile();
-      const updated: UserProfile = { ...existing, name: name.trim(), unit };
-      await setProfile(updated);
+      await setProfile({ ...existing, name: name.trim(), unit });
     } finally {
       setSaving(false);
       onDone();

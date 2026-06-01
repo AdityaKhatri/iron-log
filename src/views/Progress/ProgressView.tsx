@@ -1,222 +1,503 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Topbar } from '../../components/Topbar/Topbar';
 import { getAllSessions } from '../../db/sessions';
-import { getAllExercises } from '../../db/exercises';
 import { getAllBodyweight } from '../../db/bodyweight';
-import { estimated1RM } from '../../lib/epley';
-import type { Exercise, Session, Bodyweight } from '../../types';
+import { getAllNutritionLogs } from '../../db/nutritionLog';
+import { getAllExercises } from '../../db/exercises';
+import type { Session, Bodyweight, NutritionLog, Exercise } from '../../types';
 import './Progress.css';
 
-export function ProgressView() {
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+interface Props {
+  onBack: () => void;
+}
+
+// ─── Epley 1RM estimate ───────────────────────────────────────────────────────
+
+function epley(weight: number, reps: number): number {
+  if (reps === 1) return weight;
+  return weight * (1 + reps / 30);
+}
+
+// ─── SVG Line Chart ───────────────────────────────────────────────────────────
+
+function LineChart({ points, color }: {
+  points: { label: string; value: number }[];
+  color: string;
+}) {
+  if (points.length === 0) {
+    return (
+      <div className="prog-empty-chart">
+        <span>No data</span>
+      </div>
+    );
+  }
+
+  const W = 300, H = 100;
+  const PAD = { top: 10, right: 8, bottom: 22, left: 34 };
+  const iW = W - PAD.left - PAD.right;
+  const iH = H - PAD.top - PAD.bottom;
+  const vals = points.map(p => p.value);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+
+  const toX = (i: number) => PAD.left + (points.length === 1 ? iW / 2 : (i / (points.length - 1)) * iW);
+  const toY = (v: number) => PAD.top + iH - ((v - minV) / range) * iH;
+
+  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
+  const fill = `${d} L${toX(points.length - 1).toFixed(1)},${(PAD.top + iH).toFixed(1)} L${toX(0).toFixed(1)},${(PAD.top + iH).toFixed(1)} Z`;
+
+  // Show up to 4 x-axis labels
+  const n = points.length;
+  const labelIdx = n <= 4
+    ? points.map((_, i) => i)
+    : [0, Math.round(n / 3), Math.round(2 * n / 3), n - 1];
+
+  const fmt = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v % 1 === 0 ? String(v) : v.toFixed(1);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="prog-chart-svg">
+      {/* grid */}
+      <line x1={PAD.left} y1={PAD.top} x2={PAD.left + iW} y2={PAD.top} className="prog-grid-line" />
+      <line x1={PAD.left} y1={PAD.top + iH} x2={PAD.left + iW} y2={PAD.top + iH} className="prog-grid-line" />
+      {/* y labels */}
+      <text x={PAD.left - 4} y={PAD.top + 4} className="prog-axis-label" textAnchor="end">{fmt(maxV)}</text>
+      <text x={PAD.left - 4} y={PAD.top + iH + 1} className="prog-axis-label" textAnchor="end">{fmt(minV)}</text>
+      {/* area */}
+      <path d={fill} fill={color} opacity="0.12" />
+      {/* line */}
+      <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+      {/* dots */}
+      {points.map((_, i) => (
+        <circle key={i} cx={toX(i)} cy={toY(_.value)} r="2.5" fill={color} />
+      ))}
+      {/* x labels */}
+      {labelIdx.map(i => (
+        <text key={i} x={toX(i)} y={H - 3} className="prog-axis-label" textAnchor="middle">
+          {points[i].label}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ─── SVG Bar Chart ────────────────────────────────────────────────────────────
+
+function BarChart({ bars, color, goalLine }: {
+  bars: { label: string; value: number }[];
+  color: string;
+  goalLine?: number;
+}) {
+  if (bars.length === 0) {
+    return <div className="prog-empty-chart"><span>No data</span></div>;
+  }
+
+  const W = 300, H = 100;
+  const PAD = { top: 10, right: 8, bottom: 22, left: 34 };
+  const iW = W - PAD.left - PAD.right;
+  const iH = H - PAD.top - PAD.bottom;
+  const maxV = Math.max(...bars.map(b => b.value), goalLine ?? 0) || 1;
+  const barW = (iW / bars.length) * 0.65;
+  const gap = iW / bars.length;
+
+  const toX = (i: number) => PAD.left + i * gap + gap / 2;
+  const toH = (v: number) => (v / maxV) * iH;
+  const fmt = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v);
+
+  // Show up to 5 x-axis labels
+  const n = bars.length;
+  const labelIdx = n <= 5 ? bars.map((_, i) => i) : [0, Math.round(n / 4), Math.round(n / 2), Math.round(3 * n / 4), n - 1];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="prog-chart-svg">
+      <line x1={PAD.left} y1={PAD.top + iH} x2={PAD.left + iW} y2={PAD.top + iH} className="prog-grid-line" />
+      <text x={PAD.left - 4} y={PAD.top + 4} className="prog-axis-label" textAnchor="end">{fmt(maxV)}</text>
+      {goalLine != null && (
+        <line
+          x1={PAD.left} y1={PAD.top + iH - toH(goalLine)}
+          x2={PAD.left + iW} y2={PAD.top + iH - toH(goalLine)}
+          stroke="var(--accent)" strokeWidth="1" strokeDasharray="4,3" opacity="0.7"
+        />
+      )}
+      {bars.map((b, i) => (
+        <rect
+          key={i}
+          x={toX(i) - barW / 2}
+          y={PAD.top + iH - toH(b.value)}
+          width={barW}
+          height={toH(b.value)}
+          fill={color}
+          rx="1.5"
+        />
+      ))}
+      {labelIdx.map(i => (
+        <text key={i} x={toX(i)} y={H - 3} className="prog-axis-label" textAnchor="middle">
+          {bars[i].label}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ─── Tab: Training ────────────────────────────────────────────────────────────
+
+interface ExercisePoint {
+  date: string;
+  label: string;
+  topWeight: number;
+  est1RM: number;
+  volume: number;
+}
+
+function TrainingTab({ sessions, exercises }: { sessions: Session[]; exercises: Exercise[] }) {
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Find exercises that appear in at least one finished session
+  const exerciseMap = new Map(exercises.map(e => [e.id, e]));
+  const usedIds = new Set<string>();
+  sessions.filter(s => s.finishedAt).forEach(s =>
+    s.groups.forEach(g => g.blocks.forEach(b => usedIds.add(b.exerciseId)))
+  );
+  const usedExercises = [...usedIds]
+    .map(id => exerciseMap.get(id))
+    .filter(Boolean) as Exercise[];
+
+  const filtered = usedExercises
+    .filter(e => !search || e.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const selectedName = selectedId ? exerciseMap.get(selectedId)?.name ?? selectedId : '';
+
+  // Compute per-session points for selected exercise
+  const points: ExercisePoint[] = [];
+  if (selectedId) {
+    const relevant = sessions
+      .filter(s => s.finishedAt && s.groups.some(g => g.blocks.some(b => b.exerciseId === selectedId)))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    for (const s of relevant) {
+      const allSets = s.groups.flatMap(g =>
+        g.blocks.filter(b => b.exerciseId === selectedId).flatMap(b =>
+          b.sets.filter(st => st.completed && st.weight != null && st.weight > 0)
+        )
+      );
+      if (allSets.length === 0) continue;
+
+      const topWeight = Math.max(...allSets.map(st => st.weight!));
+      const est1RM = Math.max(...allSets
+        .filter(st => st.reps != null && st.reps > 0)
+        .map(st => epley(st.weight!, st.reps!))
+      );
+      const volume = allSets.reduce((sum, st) => sum + (st.weight! * (st.reps ?? 1)), 0);
+      const label = s.date.slice(5).replace('-', '/');
+      points.push({ date: s.date, label, topWeight, est1RM: isFinite(est1RM) ? est1RM : topWeight, volume });
+    }
+  }
+
+  return (
+    <div className="prog-tab-content">
+      {/* Exercise search */}
+      <div className="prog-section">
+        <div className="prog-section-label">Exercise</div>
+        <div style={{ position: 'relative' }}>
+          <input
+            className="prog-search"
+            placeholder="Search exercises…"
+            value={search || selectedName}
+            onChange={e => { setSearch(e.target.value); setSelectedId(null); setShowDropdown(true); }}
+            onFocus={() => setShowDropdown(true)}
+            onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+          />
+          {showDropdown && filtered.length > 0 && (
+            <div className="prog-dropdown">
+              {filtered.slice(0, 12).map(e => (
+                <button key={e.id} className="prog-dropdown-row" onMouseDown={() => {
+                  setSelectedId(e.id); setSearch(''); setShowDropdown(false);
+                }}>
+                  {e.name}
+                  <span className="prog-dropdown-meta">{e.muscleGroup}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {selectedId && points.length === 0 && (
+        <div className="prog-empty"><span>No logged sets for this exercise yet.</span></div>
+      )}
+
+      {points.length > 0 && (
+        <>
+          <div className="prog-section">
+            <div className="prog-chart-label">Top Set Weight (kg)</div>
+            <LineChart points={points.map(p => ({ label: p.label, value: p.topWeight }))} color="var(--accent)" />
+          </div>
+          <div className="prog-section">
+            <div className="prog-chart-label">Estimated 1RM — Epley (kg)</div>
+            <LineChart points={points.map(p => ({ label: p.label, value: Math.round(p.est1RM) }))} color="#7c6af5" />
+          </div>
+          <div className="prog-section">
+            <div className="prog-chart-label">Volume (kg × reps)</div>
+            <LineChart points={points.map(p => ({ label: p.label, value: Math.round(p.volume) }))} color="var(--grp-cardio)" />
+          </div>
+        </>
+      )}
+
+      {!selectedId && (
+        <div className="prog-empty"><span>Select an exercise to see your training history.</span></div>
+      )}
+    </div>
+  );
+}
+
+// ─── Tab: Records (PRs) ───────────────────────────────────────────────────────
+
+interface PREntry {
+  exerciseId: string;
+  exerciseName: string;
+  weight: number;
+  reps: number;
+  est1RM: number;
+  date: string;
+}
+
+function RecordsTab({ sessions, exercises }: { sessions: Session[]; exercises: Exercise[] }) {
+  const exerciseMap = new Map(exercises.map(e => [e.id, e]));
+
+  // Per exercise: best set by estimated 1RM
+  const bestByExercise = new Map<string, PREntry>();
+
+  for (const s of sessions) {
+    if (!s.finishedAt) continue;
+    for (const g of s.groups) {
+      for (const b of g.blocks) {
+        for (const st of b.sets) {
+          if (!st.completed || st.weight == null || st.weight <= 0 || st.reps == null || st.reps <= 0) continue;
+          const e1rm = epley(st.weight, st.reps);
+          const existing = bestByExercise.get(b.exerciseId);
+          if (!existing || e1rm > existing.est1RM) {
+            bestByExercise.set(b.exerciseId, {
+              exerciseId: b.exerciseId,
+              exerciseName: exerciseMap.get(b.exerciseId)?.name ?? b.exerciseName,
+              weight: st.weight,
+              reps: st.reps,
+              est1RM: e1rm,
+              date: s.date,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  const prs = [...bestByExercise.values()].sort((a, b) => b.est1RM - a.est1RM);
+
+  if (prs.length === 0) {
+    return (
+      <div className="prog-tab-content">
+        <div className="prog-empty"><span>Log some workouts to see your personal records.</span></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="prog-tab-content">
+      <div className="prog-section">
+        <div className="prog-section-label">Best lifts by estimated 1RM</div>
+        {prs.map((pr, i) => (
+          <div key={pr.exerciseId} className="prog-pr-row">
+            <div className="prog-pr-rank">{i + 1}</div>
+            <div className="prog-pr-info">
+              <div className="prog-pr-name">{pr.exerciseName}</div>
+              <div className="prog-pr-meta">{pr.date} · {pr.weight} kg × {pr.reps} reps</div>
+            </div>
+            <div className="prog-pr-e1rm">
+              <span className="prog-pr-e1rm-val">{Math.round(pr.est1RM)}</span>
+              <span className="prog-pr-e1rm-unit">kg e1RM</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Bodyweight ──────────────────────────────────────────────────────────
+
+function BodyTab({ bodyweightEntries }: { bodyweightEntries: Bodyweight[] }) {
+  const entries = [...bodyweightEntries].sort((a, b) => a.date.localeCompare(b.date)).slice(-60);
+
+  if (entries.length === 0) {
+    return (
+      <div className="prog-tab-content">
+        <div className="prog-empty"><span>No bodyweight entries yet. Log your weight from the Today tab.</span></div>
+      </div>
+    );
+  }
+
+  const latest = entries[entries.length - 1];
+  const unit = latest.unit;
+  const points = entries.map(e => ({ label: e.date.slice(5).replace('-', '/'), value: e.weight }));
+
+  // 7-day moving average (or all-time if fewer)
+  const avg7 = entries.slice(-7).reduce((s, e) => s + e.weight, 0) / Math.min(7, entries.length);
+
+  // Trend: compare last 7 days avg to prev 7 days avg
+  let trend: string | null = null;
+  if (entries.length >= 14) {
+    const prev7avg = entries.slice(-14, -7).reduce((s, e) => s + e.weight, 0) / 7;
+    const diff = avg7 - prev7avg;
+    trend = `${diff >= 0 ? '+' : ''}${diff.toFixed(1)} ${unit} vs prior week`;
+  }
+
+  return (
+    <div className="prog-tab-content">
+      <div className="prog-section">
+        <div className="prog-bw-stats">
+          <div className="prog-bw-stat">
+            <span className="prog-bw-stat-val">{latest.weight} {unit}</span>
+            <span className="prog-bw-stat-label">Current</span>
+          </div>
+          <div className="prog-bw-stat">
+            <span className="prog-bw-stat-val">{avg7.toFixed(1)} {unit}</span>
+            <span className="prog-bw-stat-label">7-day avg</span>
+          </div>
+          {trend && (
+            <div className="prog-bw-stat">
+              <span className="prog-bw-stat-val" style={{ fontSize: 13 }}>{trend}</span>
+              <span className="prog-bw-stat-label">Trend</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="prog-section">
+        <div className="prog-chart-label">Weight over time ({unit})</div>
+        <LineChart points={points} color="var(--accent)" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Nutrition ───────────────────────────────────────────────────────────
+
+function NutritionTab({ logs }: { logs: NutritionLog[] }) {
+  // Build last 14 days of daily totals
+  const today = new Date();
+  const days: { date: string; label: string; kcal: number }[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    const label = i === 0 ? 'Today' : d.toLocaleDateString('en', { weekday: 'short' }).slice(0, 2);
+    const kcal = logs.filter(l => l.date === iso).reduce((s, l) => s + l.kcal, 0);
+    days.push({ date: iso, label, kcal });
+  }
+
+  const totalLogged = days.reduce((s, d) => s + d.kcal, 0);
+  const daysWithData = days.filter(d => d.kcal > 0).length;
+  const avgKcal = daysWithData > 0 ? Math.round(totalLogged / daysWithData) : 0;
+
+  if (logs.length === 0) {
+    return (
+      <div className="prog-tab-content">
+        <div className="prog-empty"><span>No nutrition logs yet. Log meals from the Today tab.</span></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="prog-tab-content">
+      <div className="prog-section">
+        <div className="prog-bw-stats">
+          <div className="prog-bw-stat">
+            <span className="prog-bw-stat-val">{avgKcal}</span>
+            <span className="prog-bw-stat-label">Avg kcal/day</span>
+          </div>
+          <div className="prog-bw-stat">
+            <span className="prog-bw-stat-val">{daysWithData}</span>
+            <span className="prog-bw-stat-label">Days logged</span>
+          </div>
+        </div>
+      </div>
+      <div className="prog-section">
+        <div className="prog-chart-label">Daily calories — last 14 days</div>
+        <BarChart
+          bars={days.map(d => ({ label: d.label, value: d.kcal }))}
+          color="var(--grp-main)"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Progress View ────────────────────────────────────────────────────────────
+
+type Tab = 'training' | 'records' | 'body' | 'nutrition';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'training', label: 'Training' },
+  { id: 'records', label: 'Records' },
+  { id: 'body', label: 'Body' },
+  { id: 'nutrition', label: 'Nutrition' },
+];
+
+export function ProgressView({ onBack }: Props) {
+  const [tab, setTab] = useState<Tab>('training');
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [bodyweights, setBodyweights] = useState<Bodyweight[]>([]);
-  const [selectedId, setSelectedId] = useState<string>('');
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [bodyweight, setBodyweight] = useState<Bodyweight[]>([]);
+  const [nutritionLogs, setNutritionLogs] = useState<NutritionLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getAllExercises(), getAllSessions(), getAllBodyweight()]).then(([exs, sess, bw]) => {
-      setExercises(exs.filter(e => !e.archived));
-      setSessions(sess);
-      setBodyweights(bw);
+    Promise.all([
+      getAllSessions(),
+      getAllExercises(),
+      getAllBodyweight(),
+      getAllNutritionLogs(),
+    ]).then(([s, e, b, n]) => {
+      setSessions(s);
+      setExercises(e);
+      setBodyweight(b);
+      setNutritionLogs(n);
       setLoading(false);
     });
   }, []);
 
-  const exerciseSessions = sessions.flatMap(s =>
-    s.groups.flatMap(g =>
-      g.blocks
-        .filter(b => b.exerciseId === selectedId && !b.skipped)
-        .map(b => ({
-          date: s.date,
-          topSet: b.sets.reduce<{ weight: number; reps: number } | null>((best, set) => {
-            if (!set.completed || !set.weight || !set.reps) return best;
-            const e1rm = estimated1RM(set.weight, set.reps);
-            if (!best) return { weight: set.weight, reps: set.reps };
-            return e1rm > estimated1RM(best.weight, best.reps) ? { weight: set.weight, reps: set.reps } : best;
-          }, null),
-        }))
-    )
-  ).filter(x => x.topSet);
-
   return (
     <div className="progress-view">
-      <div className="progress-header">
-        <h2>Progress</h2>
-        {exercises.length > 0 && (
-          <select
-            className="input"
-            value={selectedId}
-            onChange={e => setSelectedId(e.target.value)}
+      <Topbar title="Progress" onBack={onBack} />
+
+      {/* Tab bar */}
+      <div className="prog-tabbar">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            className={`prog-tab${tab === t.id ? ' active' : ''}`}
+            onClick={() => setTab(t.id)}
           >
-            <option value="">Select exercise…</option>
-            {exercises.map(ex => (
-              <option key={ex.id} value={ex.id}>{ex.name}</option>
-            ))}
-          </select>
-        )}
+            {t.label}
+          </button>
+        ))}
       </div>
 
+      {/* Content */}
       <div className="progress-content">
         {loading ? (
-          <div className="empty-state"><p>Loading…</p></div>
-        ) : !selectedId ? (
-          <div className="empty-state">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" />
-              <line x1="6" y1="20" x2="6" y2="14" /><line x1="3" y1="20" x2="21" y2="20" />
-            </svg>
-            <h3>Select an exercise</h3>
-            <p>Pick an exercise above to see your progress charts.</p>
-          </div>
-        ) : exerciseSessions.length === 0 ? (
-          <div className="empty-state">
-            <h3>No data yet</h3>
-            <p>Complete sessions with this exercise to see progress.</p>
-          </div>
+          <div className="prog-empty"><span>Loading…</span></div>
+        ) : tab === 'training' ? (
+          <TrainingTab sessions={sessions} exercises={exercises} />
+        ) : tab === 'records' ? (
+          <RecordsTab sessions={sessions} exercises={exercises} />
+        ) : tab === 'body' ? (
+          <BodyTab bodyweightEntries={bodyweight} />
         ) : (
-          <ExerciseChartSection data={exerciseSessions} />
-        )}
-
-        {bodyweights.length > 0 && (
-          <div className="progress-section">
-            <div className="progress-section-title">Bodyweight Trend</div>
-            <BodyweightChart data={bodyweights} />
-          </div>
+          <NutritionTab logs={nutritionLogs} />
         )}
       </div>
     </div>
   );
-}
-
-function ExerciseChartSection({ data }: { data: { date: string; topSet: { weight: number; reps: number } | null }[] }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    const points = data.filter(d => d.topSet).map(d => ({
-      x: d.date,
-      y: estimated1RM(d.topSet!.weight, d.topSet!.reps),
-    }));
-
-    if (points.length === 0) return;
-
-    const canvas = canvasRef.current;
-    canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    const w = canvas.offsetWidth;
-    const h = canvas.offsetHeight;
-
-    const PAD = { top: 20, right: 16, bottom: 30, left: 48 };
-    const maxY = Math.max(...points.map(p => p.y)) * 1.1;
-    const minY = Math.min(...points.map(p => p.y)) * 0.9;
-
-    const xScale = (i: number) => PAD.left + (i / (points.length - 1 || 1)) * (w - PAD.left - PAD.right);
-    const yScale = (v: number) => PAD.top + (1 - (v - minY) / (maxY - minY)) * (h - PAD.top - PAD.bottom);
-
-    ctx.clearRect(0, 0, w, h);
-
-    // Grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = PAD.top + (i / 4) * (h - PAD.top - PAD.bottom);
-      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(w - PAD.right, y); ctx.stroke();
-    }
-
-    // Line
-    ctx.strokeStyle = '#FF5A1F';
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    points.forEach((p, i) => {
-      if (i === 0) ctx.moveTo(xScale(i), yScale(p.y));
-      else ctx.lineTo(xScale(i), yScale(p.y));
-    });
-    ctx.stroke();
-
-    // Dots
-    points.forEach((p, i) => {
-      ctx.beginPath();
-      ctx.arc(xScale(i), yScale(p.y), 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#FF5A1F';
-      ctx.fill();
-      ctx.strokeStyle = '#15151A';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    });
-
-    // Y axis labels
-    ctx.fillStyle = 'rgba(245,242,235,0.35)';
-    ctx.font = '10px JetBrains Mono, monospace';
-    ctx.textAlign = 'right';
-    for (let i = 0; i <= 4; i++) {
-      const v = minY + (1 - i / 4) * (maxY - minY);
-      ctx.fillText(Math.round(v) + '', PAD.left - 6, PAD.top + (i / 4) * (h - PAD.top - PAD.bottom) + 4);
-    }
-  }, [data]);
-
-  return (
-    <div className="progress-section">
-      <div className="progress-section-title">Estimated 1RM</div>
-      <canvas ref={canvasRef} style={{ width: '100%', height: 180, borderRadius: 'var(--radius-md)' }} />
-    </div>
-  );
-}
-
-function BodyweightChart({ data }: { data: Bodyweight[] }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current || data.length === 0) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    const canvas = canvasRef.current;
-    canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    const w = canvas.offsetWidth;
-    const h = canvas.offsetHeight;
-    const PAD = { top: 20, right: 16, bottom: 30, left: 48 };
-
-    const weights = data.map(d => d.weight);
-    const maxY = Math.max(...weights) * 1.05;
-    const minY = Math.min(...weights) * 0.95;
-
-    const xScale = (i: number) => PAD.left + (i / (data.length - 1 || 1)) * (w - PAD.left - PAD.right);
-    const yScale = (v: number) => PAD.top + (1 - (v - minY) / (maxY - minY)) * (h - PAD.top - PAD.bottom);
-
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = PAD.top + (i / 4) * (h - PAD.top - PAD.bottom);
-      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(w - PAD.right, y); ctx.stroke();
-    }
-
-    ctx.strokeStyle = '#F5F2EB';
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    data.forEach((d, i) => {
-      if (i === 0) ctx.moveTo(xScale(i), yScale(d.weight));
-      else ctx.lineTo(xScale(i), yScale(d.weight));
-    });
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(245,242,235,0.35)';
-    ctx.font = '10px JetBrains Mono, monospace';
-    ctx.textAlign = 'right';
-    for (let i = 0; i <= 4; i++) {
-      const v = minY + (1 - i / 4) * (maxY - minY);
-      ctx.fillText(v.toFixed(1), PAD.left - 6, PAD.top + (i / 4) * (h - PAD.top - PAD.bottom) + 4);
-    }
-  }, [data]);
-
-  return <canvas ref={canvasRef} style={{ width: '100%', height: 160, borderRadius: 'var(--radius-md)' }} />;
 }

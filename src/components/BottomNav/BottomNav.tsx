@@ -1,13 +1,7 @@
 import './BottomNav.css';
 import type { ViewId } from '../../types';
 
-interface NavItem {
-  id: ViewId;
-  label: string;
-  icon: React.ReactNode;
-}
-
-const NAV_ITEMS: NavItem[] = [
+const PRIMARY_TABS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
   {
     id: 'today',
     label: 'Today',
@@ -16,6 +10,8 @@ const NAV_ITEMS: NavItem[] = [
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
         <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
         <line x1="3" y1="10" x2="21" y2="10" />
+        <line x1="8" y1="14" x2="8" y2="14" /><line x1="12" y1="14" x2="12" y2="14" />
+        <line x1="8" y1="18" x2="8" y2="18" /><line x1="12" y1="18" x2="12" y2="18" />
       </svg>
     ),
   },
@@ -41,36 +37,22 @@ const NAV_ITEMS: NavItem[] = [
       </svg>
     ),
   },
-  {
-    id: 'library',
-    label: 'Library',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-    ),
-  },
-  {
-    id: 'profile',
-    label: 'Profile',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
 ];
+
+const MORE_VIEWS: ViewId[] = ['library', 'profile', 'progress', 'editor'];
 
 interface BottomNavProps {
   current: ViewId;
   onChange: (view: ViewId) => void;
+  onMore: () => void;
 }
 
-export function BottomNav({ current, onChange }: BottomNavProps) {
+export function BottomNav({ current, onChange, onMore }: BottomNavProps) {
+  const moreActive = MORE_VIEWS.includes(current);
+
   return (
     <nav className="botnav">
-      {NAV_ITEMS.map(item => (
+      {PRIMARY_TABS.map(item => (
         <button
           key={item.id}
           className={`tab${current === item.id ? ' active' : ''}`}
@@ -80,6 +62,19 @@ export function BottomNav({ current, onChange }: BottomNavProps) {
           {item.label}
         </button>
       ))}
+
+      {/* More */}
+      <button
+        className={`tab${moreActive ? ' active' : ''}`}
+        onClick={onMore}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
+        </svg>
+        More
+      </button>
     </nav>
   );
 }

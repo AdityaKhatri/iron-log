@@ -1,5 +1,5 @@
 // ─── View Routing ────────────────────────────────────────────────────────────
-export type ViewId = 'today' | 'plan' | 'workouts' | 'library' | 'profile' | 'editor';
+export type ViewId = 'today' | 'plan' | 'workouts' | 'library' | 'profile' | 'progress' | 'editor';
 
 // ─── Exercises ───────────────────────────────────────────────────────────────
 export type EquipmentType =
@@ -122,12 +122,45 @@ export interface Bodyweight {
 }
 
 // ─── User Profile ─────────────────────────────────────────────────────────────
+/** Legacy shape stored in meta store — kept for migration only */
 export interface UserProfile {
   name: string;
-  dateOfBirth: string | null;  // "YYYY-MM-DD"
+  dateOfBirth: string | null;
   heightCm: number | null;
   goalWeight: number | null;
   unit: 'kg' | 'lb';
+}
+
+/** Canonical profile record — stored in dedicated 'profile' IDB store */
+export interface ProfileRecord {
+  id: 'profile';
+  name: string;
+  dateOfBirth: string | null;   // "YYYY-MM-DD"
+  heightCm: number | null;
+  sex: 'male' | 'female' | null;
+  activityLevel: number | null; // 1.2 | 1.375 | 1.55 | 1.725 | 1.9
+  unit: 'kg' | 'lb';
+  goalWeight: number | null;
+  updatedAt: number;
+}
+
+// ─── Nutrition ────────────────────────────────────────────────────────────────
+export interface NutritionLog {
+  id: string;       // 'nl_<timestamp>'
+  date: string;     // "YYYY-MM-DD"
+  name: string;     // "Dal Bhat"
+  kcal: number;
+  notes: string;
+  createdAt: string; // ISO datetime
+}
+
+export interface CalorieGoalLog {
+  id: string;                    // 'cg_<timestamp>'
+  date: string;                  // "YYYY-MM-DD" — date goal was set
+  targetCalories: number;
+  calculatedMaintenance: number; // TDEE at time of setting
+  weightAtTime: number;          // snapshot from bodyweight log
+  note: string;
 }
 
 // ─── Meta ─────────────────────────────────────────────────────────────────────

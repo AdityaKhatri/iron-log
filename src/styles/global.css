@@ -360,7 +360,7 @@ a { color: var(--accent); text-decoration: none; }
 /* ─── Bottom Nav ─────────────────────────────────────────────────────────────── */
 .botnav {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border-top: 1px solid var(--line);
   background: var(--bg);
   /* Explicit height fills background all the way to screen edge;

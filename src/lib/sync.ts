@@ -19,7 +19,10 @@ export interface BackupData {
     bodyweight: unknown[];
     // meta: omit activeSession (ephemeral) and sync state
     preferences: unknown;
-    profile: unknown;
+    // v3 stores (optional — older backups won't have these)
+    profile?: unknown;
+    nutritionLog?: unknown[];
+    calorieGoalLog?: unknown[];
   };
 }
 
@@ -40,7 +43,8 @@ export async function exportToBackup(): Promise<BackupData> {
   const db = await getDb();
   const deviceId = await getOrCreateDeviceId();
 
-  const [exercises, workouts, plan, sessions, bodyweight, preferences, profile] =
+  const [exercises, workouts, plan, sessions, bodyweight, preferences,
+    profileRows, nutritionLog, calorieGoalLog] =
     await Promise.all([
       idbGetAll<unknown>(db, 'exercises'),
       idbGetAll<unknown>(db, 'workouts'),
@@ -48,7 +52,9 @@ export async function exportToBackup(): Promise<BackupData> {
       idbGetAll<unknown>(db, 'sessions'),
       idbGetAll<unknown>(db, 'bodyweight'),
       getMeta('preferences'),
-      getMeta('profile'),
+      idbGetAll<unknown>(db, 'profile'),
+      idbGetAll<unknown>(db, 'nutritionLog'),
+      idbGetAll<unknown>(db, 'calorieGoalLog'),
     ]);
 
   return {
@@ -62,7 +68,10 @@ export async function exportToBackup(): Promise<BackupData> {
       sessions,
       bodyweight,
       preferences: preferences ?? null,
-      profile: profile ?? null,
+      // profile store returns an array; we export the single record (or null)
+      profile: profileRows[0] ?? null,
+      nutritionLog,
+      calorieGoalLog,
     },
   };
 }
@@ -126,13 +135,30 @@ export async function mergeFromBackup(data: BackupData): Promise<void> {
     idbPutMany(db, 'bodyweight', mergedBodyweight),
   ]);
 
-  // Merge preferences and profile: last-write-wins based on backup exportedAt vs local
-  // We don't have per-object updatedAt for these, so if backup exists use it
-  // (caller can decide policy; here we just overwrite if backup has data)
+  // Preferences: overwrite if backup has data
   if (data.stores.preferences != null) {
     await setMeta('preferences', data.stores.preferences);
   }
+
+  // Profile (v3): single record merge by updatedAt
   if (data.stores.profile != null) {
-    await setMeta('profile', data.stores.profile);
+    const incoming = data.stores.profile as { updatedAt?: number };
+    const localRows = await idbGetAll<{ updatedAt?: number }>(db, 'profile');
+    const local = localRows[0];
+    if (!local || (incoming.updatedAt ?? 0) >= (local.updatedAt ?? 0)) {
+      await idbPutMany(db, 'profile', [incoming]);
+    }
+  }
+
+  // nutritionLog + calorieGoalLog: append-only merge by id
+  if (data.stores.nutritionLog?.length) {
+    const localNl = await idbGetAll<RecordWithId>(db, 'nutritionLog');
+    const merged = mergeById(localNl, data.stores.nutritionLog as RecordWithId[]);
+    await idbPutMany(db, 'nutritionLog', merged);
+  }
+  if (data.stores.calorieGoalLog?.length) {
+    const localCg = await idbGetAll<RecordWithId>(db, 'calorieGoalLog');
+    const merged = mergeById(localCg, data.stores.calorieGoalLog as RecordWithId[]);
+    await idbPutMany(db, 'calorieGoalLog', merged);
   }
 }

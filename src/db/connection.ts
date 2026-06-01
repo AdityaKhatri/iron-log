@@ -1,5 +1,5 @@
 export const DB_NAME = 'iron-log';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -26,6 +26,18 @@ function createStores(db: IDBDatabase): void {
   }
   if (!db.objectStoreNames.contains('meta')) {
     db.createObjectStore('meta', { keyPath: 'key' });
+  }
+  // v3 stores
+  if (!db.objectStoreNames.contains('profile')) {
+    db.createObjectStore('profile', { keyPath: 'id' });
+  }
+  if (!db.objectStoreNames.contains('nutritionLog')) {
+    const nlStore = db.createObjectStore('nutritionLog', { keyPath: 'id' });
+    nlStore.createIndex('date', 'date');
+  }
+  if (!db.objectStoreNames.contains('calorieGoalLog')) {
+    const cgStore = db.createObjectStore('calorieGoalLog', { keyPath: 'id' });
+    cgStore.createIndex('date', 'date');
   }
 }
 

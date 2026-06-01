@@ -34,6 +34,7 @@ export function WorkoutsView() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // workout id
   const [aiImporting, setAiImporting] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   async function handleDelete(id: string) {
     await deleteWorkout(id);
@@ -116,13 +117,7 @@ export function WorkoutsView() {
       <Topbar
         title="Workouts"
         right={
-          <div style={{ display: 'flex', gap: 4 }}>
-            <button className="icon-btn" onClick={() => setAiImporting(true)} aria-label="Import from AI" title="Import from AI">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 0 6h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1 0-6h1V6a4 4 0 0 1 4-4z"/>
-                <line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/>
-              </svg>
-            </button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <button className="icon-btn" onClick={() => setScanning(true)} aria-label="Scan QR code" title="Scan QR code">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -134,7 +129,7 @@ export function WorkoutsView() {
                 <rect x="18" y="18" width="3" height="3" rx="0.5" />
               </svg>
             </button>
-            <button className="icon-btn" onClick={createWorkout} aria-label="New workout" title="New workout">
+            <button className="icon-btn" onClick={() => setAddOpen(true)} aria-label="New workout" title="New workout">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -142,6 +137,67 @@ export function WorkoutsView() {
           </div>
         }
       />
+
+      {/* Add popup sheet */}
+      {addOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 400, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+          onClick={() => setAddOpen(false)}
+        >
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
+          <div
+            style={{
+              position: 'relative',
+              background: 'var(--surface)',
+              borderRadius: '12px 12px 0 0',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+              overflow: 'hidden',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--line-2)' }} />
+            </div>
+            <button
+              onClick={() => { setAddOpen(false); createWorkout(); }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                padding: '16px 20px', background: 'none', border: 'none',
+                borderBottom: '1px solid var(--line-1)', color: 'var(--fg)',
+                fontFamily: 'var(--mono)', fontSize: 14, letterSpacing: '0.04em',
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <span style={{ color: 'var(--fg-mute)' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" />
+                  <line x1="12" y1="9" x2="12" y2="17" /><line x1="8" y1="13" x2="16" y2="13" />
+                </svg>
+              </span>
+              Build manually
+            </button>
+            <button
+              onClick={() => { setAddOpen(false); setAiImporting(true); }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                padding: '16px 20px', background: 'none', border: 'none',
+                color: 'var(--fg)',
+                fontFamily: 'var(--mono)', fontSize: 14, letterSpacing: '0.04em',
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <span style={{ color: 'var(--fg-mute)' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 0 6h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1 0-6h1V6a4 4 0 0 1 4-4z"/>
+                  <line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/>
+                </svg>
+              </span>
+              Import with AI
+            </button>
+            <div style={{ height: 8 }} />
+          </div>
+        </div>
+      )}
 
       {sharing && (
         <ShareModal workout={sharing} onClose={() => setSharing(null)} />

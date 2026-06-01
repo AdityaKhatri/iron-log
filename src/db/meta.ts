@@ -1,5 +1,6 @@
 import { getDb, idbGet, idbPut } from './connection';
-import type { MetaRecord, Preferences, Session, UserProfile } from '../types';
+import type { MetaRecord, Preferences, Session, ProfileRecord } from '../types';
+import { getProfile as getProfileRecord, setProfile as setProfileRecord } from './profile';
 
 export async function getMeta<T>(key: string): Promise<T | undefined> {
   const db = await getDb();
@@ -39,21 +40,13 @@ export async function setSchemaVersion(v: number): Promise<void> {
   await setMeta('schema_version', v);
 }
 
-const DEFAULT_PROFILE: UserProfile = {
-  name: '',
-  dateOfBirth: null,
-  heightCm: null,
-  goalWeight: null,
-  unit: 'kg',
-};
-
-export async function getProfile(): Promise<UserProfile> {
-  const p = await getMeta<UserProfile>('profile');
-  return p ?? DEFAULT_PROFILE;
+// Delegate to the dedicated profile store (which handles migration from meta)
+export async function getProfile(): Promise<ProfileRecord> {
+  return getProfileRecord();
 }
 
-export async function setProfile(profile: UserProfile): Promise<void> {
-  await setMeta('profile', profile);
+export async function setProfile(profile: Omit<ProfileRecord, 'id'>): Promise<ProfileRecord> {
+  return setProfileRecord(profile);
 }
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────

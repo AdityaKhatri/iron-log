@@ -1,52 +1,71 @@
-import { useEffect, useRef, useState } from 'react';
-import { getProfile, setProfile } from '../../db/meta';
+import { useEffect, useState } from 'react';
+import { getProfile, setProfile } from '../../db/profile';
+import { getAllBodyweight, putBodyweight } from '../../db/bodyweight';
+import { addCalorieGoal, getActiveGoalForDate } from '../../db/calorieGoalLog';
 import { Topbar } from '../../components/Topbar/Topbar';
 import { THEME_PAIRS, applyTheme, getTheme } from '../../lib/theme';
 import type { ThemeKey } from '../../lib/theme';
-import { getAllBodyweight, putBodyweight } from '../../db/bodyweight';
-import { getAllSessions } from '../../db/sessions';
-import { getAllExercises } from '../../db/exercises';
-import { estimated1RM } from '../../lib/epley';
 import { today } from '../../lib/date';
 import { useSyncContext } from '../../context/SyncContext';
 import { exportToBackup, mergeFromBackup } from '../../lib/sync';
 import { getDb } from '../../db/connection';
-import type { UserProfile, Bodyweight, Exercise, Session } from '../../types';
+import type { ProfileRecord, Bodyweight, CalorieGoalLog } from '../../types';
 import type { BackupData } from '../../lib/sync';
 import './Profile.css';
 
 const TODAY = today();
 
+const ACTIVITY_LEVELS: { value: number; label: string; sublabel: string }[] = [
+  { value: 1.2,   label: 'Sedentary',        sublabel: 'desk job, little exercise' },
+  { value: 1.375, label: 'Lightly active',   sublabel: '1–3 workouts / week' },
+  { value: 1.55,  label: 'Moderately active',sublabel: '3–5 workouts / week' },
+  { value: 1.725, label: 'Very active',       sublabel: '6–7 hard sessions / week' },
+  { value: 1.9,   label: 'Athlete',           sublabel: '2× daily training' },
+];
+
+function getAge(dateOfBirth: string | null): number | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+function calculateBMR(weightKg: number, heightCm: number, age: number, sex: 'male' | 'female'): number {
+  const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  return sex === 'male' ? base + 5 : base - 161;
+}
+
 export function ProfileView() {
-  const [profile, setProfileState] = useState<UserProfile>({
-    name: '', dateOfBirth: null, heightCm: null, goalWeight: null, unit: 'kg',
+  const [profile, setProfileState] = useState<ProfileRecord>({
+    id: 'profile', name: '', dateOfBirth: null, heightCm: null,
+    sex: null, activityLevel: null, unit: 'kg', goalWeight: null, updatedAt: 0,
   });
   const [saved, setSaved] = useState(false);
   const [bodyweights, setBodyweights] = useState<Bodyweight[]>([]);
   const [bwInput, setBwInput] = useState('');
   const [bwSaved, setBwSaved] = useState(false);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [selectedExId, setSelectedExId] = useState('');
+  const [activeGoal, setActiveGoal] = useState<CalorieGoalLog | null>(null);
+  const [customKcal, setCustomKcal] = useState('');
+  const [goalToast, setGoalToast] = useState('');
 
   useEffect(() => {
     Promise.all([
       getProfile(),
       getAllBodyweight(),
-      getAllSessions(),
-      getAllExercises(),
-    ]).then(([p, bw, sess, exs]) => {
+      getActiveGoalForDate(TODAY),
+    ]).then(([p, bw, goal]) => {
       setProfileState(p);
       setBodyweights(bw);
-      setSessions(sess);
-      setExercises(exs.filter(e => !e.archived));
-      // Pre-fill today's bodyweight input if exists
+      setActiveGoal(goal);
       const todayBw = bw.find(b => b.date === TODAY);
       if (todayBw) setBwInput(String(todayBw.weight));
     });
   }, []);
 
-  async function saveProfile(updated: UserProfile) {
+  async function saveProfile(updated: ProfileRecord) {
     setProfileState(updated);
     await setProfile(updated);
     setSaved(true);
@@ -68,37 +87,39 @@ export function ProfileView() {
     setTimeout(() => setBwSaved(false), 1800);
   }
 
-  // Age from DOB
-  let age: number | null = null;
-  if (profile.dateOfBirth) {
-    const dob = new Date(profile.dateOfBirth);
-    const now = new Date();
-    age = now.getFullYear() - dob.getFullYear();
-    if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) {
-      age--;
-    }
+  async function applyGoal(kcal: number) {
+    const latestBw = bodyweights[bodyweights.length - 1];
+    if (!latestBw) return;
+    const goal = await addCalorieGoal({
+      date: TODAY,
+      targetCalories: kcal,
+      calculatedMaintenance: tdee ?? kcal,
+      weightAtTime: latestBw.weight,
+      note: '',
+    });
+    setActiveGoal(goal);
+    setGoalToast(`Goal set to ${kcal.toLocaleString()} kcal`);
+    setTimeout(() => setGoalToast(''), 2500);
   }
 
-  // Recent bodyweight (last 10)
-  const recentBw = bodyweights.slice(-10);
+  // Derived calculations
+  const age = getAge(profile.dateOfBirth);
   const latestBw = bodyweights[bodyweights.length - 1];
+  const recentBw = bodyweights.slice(-10);
 
-  // Exercise progress data
-  const exerciseSessions = sessions.flatMap(s =>
-    s.groups.flatMap(g =>
-      g.blocks
-        .filter(b => b.exerciseId === selectedExId && !b.skipped)
-        .map(b => ({
-          date: s.date,
-          topSet: b.sets.reduce<{ weight: number; reps: number } | null>((best, set) => {
-            if (!set.completed || !set.weight || !set.reps) return best;
-            const e1rm = estimated1RM(set.weight, set.reps);
-            if (!best) return { weight: set.weight, reps: set.reps };
-            return e1rm > estimated1RM(best.weight, best.reps) ? { weight: set.weight, reps: set.reps } : best;
-          }, null),
-        }))
-    )
-  ).filter(x => x.topSet);
+  // canShowCalorieSection: enough to show the picker and BMR
+  const canShowCalorieSection = !!(latestBw && profile.heightCm && age !== null && profile.sex);
+  // canCalculate: also needs an activity level to get TDEE
+  const canCalculate = canShowCalorieSection && !!profile.activityLevel;
+
+  let bmr: number | null = null;
+  let tdee: number | null = null;
+  if (canShowCalorieSection) {
+    bmr = Math.round(calculateBMR(latestBw!.weight, profile.heightCm!, age!, profile.sex!));
+  }
+  if (canCalculate) {
+    tdee = Math.round(bmr! * profile.activityLevel!);
+  }
 
   return (
     <div className="profile-view">
@@ -108,7 +129,7 @@ export function ProfileView() {
 
         {/* ── Personal Info ── */}
         <section className="profile-section">
-          <div className="profile-section-label">Personal</div>
+          <div className="profile-section-label">Biometrics</div>
 
           <div className="profile-card">
             <ProfileField label="Name">
@@ -127,10 +148,7 @@ export function ProfileView() {
                 className="profile-input"
                 type="date"
                 value={profile.dateOfBirth ?? ''}
-                onChange={e => {
-                  const updated = { ...profile, dateOfBirth: e.target.value || null };
-                  saveProfile(updated);
-                }}
+                onChange={e => saveProfile({ ...profile, dateOfBirth: e.target.value || null })}
               />
               {age !== null && <span className="profile-field-hint">{age} years old</span>}
             </ProfileField>
@@ -141,8 +159,7 @@ export function ProfileView() {
                   className="profile-input"
                   type="number"
                   placeholder="cm"
-                  min="100"
-                  max="250"
+                  min="100" max="250"
                   value={profile.heightCm ?? ''}
                   onChange={e => setProfileState(p => ({ ...p, heightCm: e.target.value ? parseFloat(e.target.value) : null }))}
                   onBlur={() => saveProfile(profile)}
@@ -157,7 +174,21 @@ export function ProfileView() {
               </div>
             </ProfileField>
 
-            <ProfileField label="Weight Unit">
+            <ProfileField label="Sex">
+              <div className="profile-unit-toggle">
+                {(['male', 'female'] as const).map(s => (
+                  <button
+                    key={s}
+                    className={`profile-unit-btn${profile.sex === s ? ' active' : ''}`}
+                    onClick={() => saveProfile({ ...profile, sex: s })}
+                  >
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </ProfileField>
+
+            <ProfileField label="Weight Unit" last>
               <div className="profile-unit-toggle">
                 {(['kg', 'lb'] as const).map(u => (
                   <button
@@ -168,27 +199,6 @@ export function ProfileView() {
                     {u}
                   </button>
                 ))}
-              </div>
-            </ProfileField>
-
-            <ProfileField label="Goal Weight" last>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input
-                  className="profile-input"
-                  type="number"
-                  placeholder="—"
-                  step="0.5"
-                  value={profile.goalWeight ?? ''}
-                  onChange={e => setProfileState(p => ({ ...p, goalWeight: e.target.value ? parseFloat(e.target.value) : null }))}
-                  onBlur={() => saveProfile(profile)}
-                  style={{ width: 80 }}
-                />
-                <span className="profile-field-unit">{profile.unit}</span>
-                {latestBw && profile.goalWeight && (
-                  <span className="profile-field-hint" style={{ color: latestBw.weight > profile.goalWeight ? 'var(--accent)' : 'var(--grp-cardio)' }}>
-                    {Math.abs(latestBw.weight - profile.goalWeight).toFixed(1)} {profile.unit} to go
-                  </span>
-                )}
               </div>
             </ProfileField>
           </div>
@@ -203,10 +213,7 @@ export function ProfileView() {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input
                   className="profile-input"
-                  type="number"
-                  step="0.1"
-                  min="20"
-                  max="500"
+                  type="number" step="0.1" min="20" max="500"
                   placeholder="0.0"
                   value={bwInput}
                   onChange={e => setBwInput(e.target.value)}
@@ -229,48 +236,123 @@ export function ProfileView() {
               ))}
             </div>
           )}
-
-          {bodyweights.length >= 2 && (
-            <div style={{ marginTop: 12 }}>
-              <div className="profile-chart-label">Trend</div>
-              <BodyweightChart data={bodyweights} unit={profile.unit} />
-            </div>
-          )}
         </section>
 
-        {/* ── Exercise Progress ── */}
+        {/* ── Calorie Goal ── */}
         <section className="profile-section">
-          <div className="profile-section-label">Exercise Progress</div>
+          <div className="profile-section-label">Calorie Goal</div>
 
-          <select
-            className="input"
-            value={selectedExId}
-            onChange={e => setSelectedExId(e.target.value)}
-            style={{ width: '100%', marginBottom: 12 }}
-          >
-            <option value="">Select exercise…</option>
-            {exercises.map(ex => (
-              <option key={ex.id} value={ex.id}>{ex.name}</option>
-            ))}
-          </select>
+          {!canShowCalorieSection ? (
+            <div className="profile-card">
+              <div className="profile-field last">
+                <span className="profile-field-hint">
+                  Complete your biometrics above (height, date of birth, sex) and log today's weight to calculate TDEE.
+                </span>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Activity level picker — always shown once biometrics are filled */}
+              <div className="profile-card cal-card">
+                <div className="cal-card-label">Activity Level</div>
+                <div className="cal-activity-list">
+                  {ACTIVITY_LEVELS.map(lvl => (
+                    <button
+                      key={lvl.value}
+                      className={`cal-activity-row${profile.activityLevel === lvl.value ? ' active' : ''}`}
+                      onClick={() => saveProfile({ ...profile, activityLevel: lvl.value })}
+                    >
+                      <span className="cal-activity-label">{lvl.label}</span>
+                      <span className="cal-activity-sub">{lvl.sublabel}</span>
+                      {profile.activityLevel === lvl.value && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {selectedExId && exerciseSessions.length === 0 && (
-            <div className="empty-state" style={{ padding: '24px 0' }}>
-              <h3>No data yet</h3>
-              <p>Complete sessions with this exercise to see progress.</p>
-            </div>
-          )}
-          {selectedExId && exerciseSessions.length > 0 && (
-            <ExerciseChart data={exerciseSessions} />
-          )}
-          {!selectedExId && (
-            <div className="empty-state" style={{ padding: '24px 0' }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" />
-                <line x1="6" y1="20" x2="6" y2="14" /><line x1="3" y1="20" x2="21" y2="20" />
-              </svg>
-              <p>Pick an exercise to see your progress charts.</p>
-            </div>
+              {/* TDEE + goal — shown once activity level is also set */}
+              {canCalculate && (
+                <div className="profile-card cal-card">
+                  {/* BMR → Maintenance row */}
+                  <div className="cal-tdee-row">
+                    <div className="cal-tdee-stat">
+                      <span className="cal-tdee-val">{bmr?.toLocaleString()}</span>
+                      <span className="cal-tdee-lbl">BMR</span>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--fg-mute)" strokeWidth="2">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                    <div className="cal-tdee-stat">
+                      <span className="cal-tdee-val cal-tdee-val--main">{tdee?.toLocaleString()}</span>
+                      <span className="cal-tdee-lbl">Maintenance</span>
+                    </div>
+                  </div>
+
+                  {/* Quick-set buttons */}
+                  <div className="cal-quickset">
+                    {[
+                      { delta: -500, label: '−500', sub: 'Aggressive cut' },
+                      { delta: -250, label: '−250', sub: 'Cut' },
+                      { delta: 0,    label: 'Maintain', sub: `${tdee?.toLocaleString()} kcal` },
+                      { delta: +250, label: '+250', sub: 'Lean bulk' },
+                      { delta: +500, label: '+500', sub: 'Bulk' },
+                    ].map(opt => {
+                      const kcal = tdee! + opt.delta;
+                      const isActive = activeGoal?.targetCalories === kcal;
+                      return (
+                        <button
+                          key={opt.delta}
+                          className={`cal-qs-btn${isActive ? ' active' : ''}`}
+                          onClick={() => applyGoal(kcal)}
+                        >
+                          <span className="cal-qs-delta">{opt.label}</span>
+                          <span className="cal-qs-sub">{opt.sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom kcal input */}
+                  <div className="cal-custom">
+                    <input
+                      className="profile-input"
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="Custom kcal…"
+                      value={customKcal}
+                      onChange={e => setCustomKcal(e.target.value)}
+                    />
+                    <button
+                      className="btn primary btn-sm"
+                      disabled={!customKcal || isNaN(Number(customKcal))}
+                      onClick={() => { applyGoal(Math.round(Number(customKcal))); setCustomKcal(''); }}
+                    >
+                      Set Goal
+                    </button>
+                  </div>
+
+                  {/* Active goal */}
+                  {activeGoal && (
+                    <div className="cal-active-goal">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>Goal: <strong>{activeGoal.targetCalories.toLocaleString()} kcal/day</strong></span>
+                      <span className="profile-field-hint" style={{ marginLeft: 'auto' }}>set {activeGoal.date}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Toast */}
+              {goalToast && (
+                <div className="cal-toast">{goalToast}</div>
+              )}
+            </>
           )}
         </section>
 
@@ -291,7 +373,6 @@ function SettingsSection() {
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>(getTheme);
   const driveConfigured = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined);
 
-  // Determine if current theme is dark or light
   const isDarkTheme = THEME_PAIRS.some(p => p.dark.key === currentTheme);
 
   function handleThemeSelect(key: ThemeKey) {
@@ -300,7 +381,6 @@ function SettingsSection() {
   }
 
   function toggleDarkLight() {
-    // Find the paired theme and switch to it
     for (const pair of THEME_PAIRS) {
       if (pair.dark.key === currentTheme) { handleThemeSelect(pair.light.key); return; }
       if (pair.light.key === currentTheme) { handleThemeSelect(pair.dark.key); return; }
@@ -309,8 +389,7 @@ function SettingsSection() {
 
   function formatLastSync(ts: number | null): string {
     if (!ts) return 'Never';
-    const d = new Date(ts);
-    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
   async function handleExport() {
@@ -340,17 +419,14 @@ function SettingsSection() {
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import failed');
     }
-    // Reset file input
     e.target.value = '';
   }
 
   async function handleWipe() {
-    if (!wipePending) {
-      setWipePending(true);
-      return;
-    }
+    if (!wipePending) { setWipePending(true); return; }
     try {
-      const stores = ['exercises', 'workouts', 'plan', 'sessions', 'bodyweight', 'meta'];
+      const stores = ['exercises', 'workouts', 'plan', 'sessions', 'bodyweight', 'meta',
+        'profile', 'nutritionLog', 'calorieGoalLog'];
       const db = await getDb();
       await Promise.all(stores.map(store =>
         new Promise<void>((resolve, reject) => {
@@ -370,7 +446,7 @@ function SettingsSection() {
       <div className="profile-section-label">Settings</div>
 
       {/* ── Sync & Backup ── */}
-      {driveConfigured && (
+      {driveConfigured ? (
         <>
           <div className="profile-settings-group-label">Sync &amp; Backup</div>
           <div className="profile-card" style={{ marginBottom: 16 }}>
@@ -390,18 +466,10 @@ function SettingsSection() {
                   </div>
                 )}
                 <div className="profile-field last" style={{ gap: 8, justifyContent: 'flex-end' }}>
-                  <button
-                    className="btn outline btn-sm"
-                    onClick={syncNow}
-                    disabled={syncing}
-                  >
+                  <button className="btn outline btn-sm" onClick={syncNow} disabled={syncing}>
                     {syncing ? 'Syncing…' : 'Sync Now'}
                   </button>
-                  <button
-                    className="btn ghost btn-sm"
-                    onClick={disconnect}
-                    style={{ color: 'var(--fg-mute)' }}
-                  >
+                  <button className="btn ghost btn-sm" onClick={disconnect} style={{ color: 'var(--fg-mute)' }}>
                     Disconnect
                   </button>
                 </div>
@@ -409,25 +477,17 @@ function SettingsSection() {
             ) : (
               <div className="profile-field last">
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--fg)', marginBottom: 4 }}>
-                    Google Drive
-                  </div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--fg)', marginBottom: 4 }}>Google Drive</div>
                   <div className="profile-field-hint">Back up your data across devices</div>
                 </div>
-                <button
-                  className="btn primary btn-sm"
-                  onClick={connect}
-                  disabled={syncing}
-                >
+                <button className="btn primary btn-sm" onClick={connect} disabled={syncing}>
                   {syncing ? 'Connecting…' : 'Connect'}
                 </button>
               </div>
             )}
           </div>
         </>
-      )}
-
-      {!driveConfigured && (
+      ) : (
         <>
           <div className="profile-settings-group-label">Sync &amp; Backup</div>
           <div className="profile-card" style={{ marginBottom: 16 }}>
@@ -444,9 +504,7 @@ function SettingsSection() {
         <div className="profile-field">
           <span className="profile-field-label">Export</span>
           <div className="profile-field-value">
-            <button className="btn outline btn-sm" onClick={handleExport}>
-              Export JSON
-            </button>
+            <button className="btn outline btn-sm" onClick={handleExport}>Export JSON</button>
           </div>
         </div>
         <div className="profile-field">
@@ -454,12 +512,7 @@ function SettingsSection() {
           <div className="profile-field-value">
             <label className="btn outline btn-sm" style={{ cursor: 'pointer' }}>
               Import JSON
-              <input
-                type="file"
-                accept=".json,application/json"
-                style={{ display: 'none' }}
-                onChange={handleImport}
-              />
+              <input type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={handleImport} />
             </label>
           </div>
         </div>
@@ -487,8 +540,6 @@ function SettingsSection() {
 
       {/* ── Appearance ── */}
       <div className="profile-settings-group-label">Appearance</div>
-
-      {/* Dark / Light global toggle */}
       <div className="profile-card" style={{ marginBottom: 10 }}>
         <div className="profile-field last">
           <span className="profile-field-label">Mode</span>
@@ -498,9 +549,7 @@ function SettingsSection() {
           </div>
         </div>
       </div>
-
-      {/* Theme list */}
-      <div className="theme-list" style={{ marginBottom: 16 }}>
+      <div className="theme-list" style={{ marginBottom: 32 }}>
         {THEME_PAIRS.map(pair => {
           const t = isDarkTheme ? pair.dark : pair.light;
           const isActive = currentTheme === t.key;
@@ -530,145 +579,6 @@ function ProfileField({ label, children, last }: { label: string; children: Reac
     <div className={`profile-field${last ? ' last' : ''}`}>
       <span className="profile-field-label">{label}</span>
       <div className="profile-field-value">{children}</div>
-    </div>
-  );
-}
-
-function BodyweightChart({ data, unit }: { data: Bodyweight[]; unit: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current || data.length < 2) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    const canvas = canvasRef.current;
-    canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    const w = canvas.offsetWidth;
-    const h = canvas.offsetHeight;
-    const PAD = { top: 16, right: 12, bottom: 24, left: 44 };
-
-    const weights = data.map(d => d.weight);
-    const maxY = Math.max(...weights) * 1.05;
-    const minY = Math.min(...weights) * 0.95;
-
-    const xScale = (i: number) => PAD.left + (i / (data.length - 1)) * (w - PAD.left - PAD.right);
-    const yScale = (v: number) => PAD.top + (1 - (v - minY) / (maxY - minY || 1)) * (h - PAD.top - PAD.bottom);
-
-    ctx.clearRect(0, 0, w, h);
-
-    // Grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = PAD.top + (i / 4) * (h - PAD.top - PAD.bottom);
-      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(w - PAD.right, y); ctx.stroke();
-    }
-
-    // Line
-    ctx.strokeStyle = '#f5f2eb';
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    data.forEach((d, i) => {
-      if (i === 0) ctx.moveTo(xScale(i), yScale(d.weight));
-      else ctx.lineTo(xScale(i), yScale(d.weight));
-    });
-    ctx.stroke();
-
-    // Dots
-    data.forEach((d, i) => {
-      ctx.beginPath();
-      ctx.arc(xScale(i), yScale(d.weight), 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#f5f2eb';
-      ctx.fill();
-    });
-
-    // Y labels
-    ctx.fillStyle = 'rgba(245,242,235,0.35)';
-    ctx.font = '10px JetBrains Mono, monospace';
-    ctx.textAlign = 'right';
-    for (let i = 0; i <= 4; i++) {
-      const v = minY + (1 - i / 4) * (maxY - minY);
-      ctx.fillText(v.toFixed(1), PAD.left - 4, PAD.top + (i / 4) * (h - PAD.top - PAD.bottom) + 4);
-    }
-  }, [data, unit]);
-
-  return <canvas ref={canvasRef} className="profile-chart-canvas" />;
-}
-
-function ExerciseChart({ data }: { data: { date: string; topSet: { weight: number; reps: number } | null }[] }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    const points = data.filter(d => d.topSet).map(d => ({
-      x: d.date,
-      y: estimated1RM(d.topSet!.weight, d.topSet!.reps),
-    }));
-    if (points.length === 0) return;
-
-    const canvas = canvasRef.current;
-    canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    const w = canvas.offsetWidth;
-    const h = canvas.offsetHeight;
-    const PAD = { top: 16, right: 12, bottom: 24, left: 44 };
-
-    const maxY = Math.max(...points.map(p => p.y)) * 1.1;
-    const minY = Math.min(...points.map(p => p.y)) * 0.9;
-
-    const xScale = (i: number) => PAD.left + (i / (points.length - 1 || 1)) * (w - PAD.left - PAD.right);
-    const yScale = (v: number) => PAD.top + (1 - (v - minY) / (maxY - minY || 1)) * (h - PAD.top - PAD.bottom);
-
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-      const y = PAD.top + (i / 4) * (h - PAD.top - PAD.bottom);
-      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(w - PAD.right, y); ctx.stroke();
-    }
-
-    ctx.strokeStyle = '#FF5A1F';
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    points.forEach((p, i) => {
-      if (i === 0) ctx.moveTo(xScale(i), yScale(p.y));
-      else ctx.lineTo(xScale(i), yScale(p.y));
-    });
-    ctx.stroke();
-
-    points.forEach((p, i) => {
-      ctx.beginPath();
-      ctx.arc(xScale(i), yScale(p.y), 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#FF5A1F';
-      ctx.fill();
-      ctx.strokeStyle = '#15151A';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    });
-
-    ctx.fillStyle = 'rgba(245,242,235,0.35)';
-    ctx.font = '10px JetBrains Mono, monospace';
-    ctx.textAlign = 'right';
-    for (let i = 0; i <= 4; i++) {
-      const v = minY + (1 - i / 4) * (maxY - minY);
-      ctx.fillText(Math.round(v) + '', PAD.left - 4, PAD.top + (i / 4) * (h - PAD.top - PAD.bottom) + 4);
-    }
-  }, [data]);
-
-  return (
-    <div>
-      <div className="profile-chart-label">Estimated 1RM</div>
-      <canvas ref={canvasRef} className="profile-chart-canvas" />
     </div>
   );
 }

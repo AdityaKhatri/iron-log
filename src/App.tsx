@@ -6,6 +6,7 @@ import { PlanView } from './views/Plan/PlanView';
 import { WorkoutsView } from './views/Workouts/WorkoutsView';
 import { ExercisesView } from './views/Exercises/ExercisesView';
 import { ProfileView } from './views/Profile/ProfileView';
+import { ProgressView } from './views/Progress/ProgressView';
 import { ExerciseEditorView } from './views/ExerciseEditor/ExerciseEditorView';
 import { OnboardingView } from './views/Onboarding/OnboardingView';
 import { ActiveSessionProvider } from './context/ActiveSessionContext';
@@ -21,12 +22,97 @@ import type { SharePayload, ImportPreview } from './lib/share';
 import { ImportSheet } from './components/ImportSheet/ImportSheet';
 import type { ViewId } from './types';
 
+// ─── More Sheet ───────────────────────────────────────────────────────────────
+
+const MORE_ITEMS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
+  {
+    id: 'library',
+    label: 'Exercises',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 6h16M4 10h16M4 14h10" />
+      </svg>
+    ),
+  },
+  {
+    id: 'progress',
+    label: 'Progress',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
+        <line x1="3" y1="20" x2="21" y2="20" />
+      </svg>
+    ),
+  },
+  {
+    id: 'profile',
+    label: 'Profile & Settings',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+      </svg>
+    ),
+  },
+];
+
+function MoreSheet({ onClose, onNavigate }: { onClose: () => void; onNavigate: (v: ViewId) => void }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 400,
+        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+      }}
+      onClick={onClose}
+    >
+      {/* backdrop */}
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
+      {/* sheet */}
+      <div
+        style={{
+          position: 'relative',
+          background: 'var(--surface)',
+          borderRadius: '12px 12px 0 0',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+          overflow: 'hidden',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--line-2)' }} />
+        </div>
+
+        {MORE_ITEMS.map(item => (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+              padding: '14px 20px', background: 'none', border: 'none',
+              borderBottom: '1px solid var(--line-1)', color: 'var(--fg)',
+              fontFamily: 'var(--mono)', fontSize: 14, letterSpacing: '0.04em',
+              cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <span style={{ color: 'var(--fg-mute)' }}>{item.icon}</span>
+            {item.label}
+          </button>
+        ))}
+        <div style={{ height: 8 }} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Conditional Nav ─────────────────────────────────────────────────────────
 
-function ConditionalNav({ current, onChange }: { current: ViewId; onChange: (v: ViewId) => void }) {
+function ConditionalNav({ current, onChange, onMore }: { current: ViewId; onChange: (v: ViewId) => void; onMore: () => void }) {
   const { session, paused } = useActiveSession();
   if (session && !paused) return null;
-  return <BottomNav current={current} onChange={onChange} />;
+  return <BottomNav current={current} onChange={onChange} onMore={onMore} />;
 }
 
 // ─── Splash screen ────────────────────────────────────────────────────────────
@@ -93,6 +179,7 @@ export function App() {
   const { updateAvailable, applyUpdate } = useUpdatePrompt();
   const [onboardingDone, setOnboardingDoneState] = useState<boolean | null>(null);
   const [view, setView] = useState<ViewId>('today');
+  const [moreOpen, setMoreOpen] = useState(false);
   const [importState, setImportState] = useState<{
     payload: SharePayload;
     preview: ImportPreview;
@@ -169,6 +256,7 @@ export function App() {
   }
 
   // Editor is an overlay — keep the previous view so the nav tab stays correct.
+  // More-group views highlight the More tab.
   const navView: ViewId = view === 'editor' ? 'library' : view;
 
   return (
@@ -180,9 +268,18 @@ export function App() {
           {view === 'workouts' && <WorkoutsView />}
           {view === 'library'  && <ExercisesView onOpenEditor={() => setView('editor')} />}
           {view === 'profile'  && <ProfileView />}
+          {view === 'progress' && <ProgressView onBack={() => setView('today')} />}
           {view === 'editor'   && <ExerciseEditorView onBack={() => setView('library')} />}
         </main>
-        <ConditionalNav current={navView} onChange={setView} />
+        <ConditionalNav current={navView} onChange={setView} onMore={() => setMoreOpen(true)} />
+
+        {/* More sheet */}
+        {moreOpen && (
+          <MoreSheet
+            onClose={() => setMoreOpen(false)}
+            onNavigate={v => { setMoreOpen(false); setView(v); }}
+          />
+        )}
 
         {/* Update available banner */}
         {updateAvailable && (

@@ -5,6 +5,8 @@ import { useQuickStats } from '../../hooks/useSessions';
 import { getWorkout } from '../../db/workouts';
 import { getSessionsByDate } from '../../db/sessions';
 import { getAllExercises } from '../../db/exercises';
+import { getNutritionLogsByDate, addNutritionLog, deleteNutritionLog } from '../../db/nutritionLog';
+import { getActiveGoalForDate } from '../../db/calorieGoalLog';
 import { Modal } from '../../components/Modal/Modal';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { Topbar } from '../../components/Topbar/Topbar';
@@ -12,7 +14,7 @@ import { CategoryIcon, CATEGORY_COLOR, CATEGORY_LABEL } from '../../components/C
 import { today, formatDisplayDate, formatDuration } from '../../lib/date';
 import { extractYouTubeId } from '../../lib/youtube';
 import { uid } from '../../lib/ids';
-import type { Session, SessionGroup, SessionBlock, SessionSet, Workout, Exercise } from '../../types';
+import type { Session, SessionGroup, SessionBlock, SessionSet, Workout, Exercise, NutritionLog, CalorieGoalLog } from '../../types';
 import './Today.css';
 
 const TODAY = today();
@@ -95,6 +97,9 @@ export function TodayView() {
   const [viewingWorkout, setViewingWorkout] = useState<Workout | null>(null);
   const [viewingSession, setViewingSession] = useState<Session | null>(null);
   const [profileName, setProfileName] = useState('');
+  const [nutritionLogs, setNutritionLogs] = useState<NutritionLog[]>([]);
+  const [calorieGoal, setCalorieGoal] = useState<CalorieGoalLog | null>(null);
+  const [showAddMeal, setShowAddMeal] = useState(false);
 
   // Load finished sessions for today (all of them, including freestyle)
   useEffect(() => {
@@ -107,6 +112,13 @@ export function TodayView() {
 
   useEffect(() => {
     import('../../db/meta').then(m => m.getProfile()).then(p => { if (p.name) setProfileName(p.name); });
+    Promise.all([
+      getNutritionLogsByDate(TODAY),
+      getActiveGoalForDate(TODAY),
+    ]).then(([logs, goal]) => {
+      setNutritionLogs(logs.sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+      setCalorieGoal(goal);
+    });
   }, []);
 
   async function startFreestyle() {
@@ -281,6 +293,211 @@ export function TodayView() {
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Start Freestyle Session
+          </button>
+        </div>
+
+        {/* Nutrition */}
+        <NutritionSection
+          logs={nutritionLogs}
+          goal={calorieGoal}
+          onAdd={() => setShowAddMeal(true)}
+          onDelete={async (id) => {
+            await deleteNutritionLog(id);
+            setNutritionLogs(prev => prev.filter(l => l.id !== id));
+          }}
+        />
+      </div>
+
+      {showAddMeal && (
+        <AddMealSheet
+          onClose={() => setShowAddMeal(false)}
+          onSave={async (entry) => {
+            const log = await addNutritionLog({ ...entry, date: TODAY });
+            setNutritionLogs(prev => [...prev, log].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+            setShowAddMeal(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Nutrition Section ────────────────────────────────────────────────────────
+
+function NutritionSection({ logs, goal, onAdd, onDelete }: {
+  logs: NutritionLog[];
+  goal: CalorieGoalLog | null;
+  onAdd: () => void;
+  onDelete: (id: string) => void;
+}) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const totalKcal = logs.reduce((sum, l) => sum + l.kcal, 0);
+  const goalKcal = goal?.targetCalories ?? null;
+  const progress = goalKcal ? Math.min(totalKcal / goalKcal, 1) : 0;
+  const over = goalKcal && totalKcal > goalKcal;
+
+  return (
+    <div className="nutrition-section">
+      <div className="nutrition-header">
+        <span className="plan-section-label" style={{ marginBottom: 0 }}>Nutrition</span>
+        <button className="btn outline btn-sm" onClick={onAdd} style={{ marginLeft: 'auto' }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Meal
+        </button>
+      </div>
+
+      <div className="nutrition-total">
+        <span className={`nutrition-consumed${over ? ' nutrition-consumed--over' : ''}`}>
+          {totalKcal.toLocaleString()}
+        </span>
+        {goalKcal ? (
+          <span className="nutrition-goal-label">/ {goalKcal.toLocaleString()} kcal</span>
+        ) : (
+          <span className="nutrition-goal-label">kcal today</span>
+        )}
+      </div>
+
+      {goalKcal && (
+        <div className="nutrition-bar">
+          <div
+            className={`nutrition-bar__fill${over ? ' nutrition-bar__fill--over' : ''}`}
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+      )}
+
+      {logs.length > 0 && (
+        <div className="nutrition-log-list">
+          {logs.map(log => (
+            <div key={log.id} className="nutrition-log-row">
+              <div className="nutrition-log-row__info">
+                <span className="nutrition-log-row__name">{log.name}</span>
+                {log.notes && <span className="nutrition-log-row__notes">{log.notes}</span>}
+              </div>
+              <span className="nutrition-log-row__kcal">{log.kcal.toLocaleString()} kcal</span>
+              {confirmDeleteId === log.id ? (
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    className="btn btn-sm"
+                    style={{ background: '#E53E3E', borderColor: '#E53E3E', color: '#fff', padding: '3px 10px' }}
+                    onClick={() => { onDelete(log.id); setConfirmDeleteId(null); }}
+                  >
+                    Remove
+                  </button>
+                  <button
+                    className="btn outline btn-sm"
+                    style={{ padding: '3px 10px' }}
+                    onClick={() => setConfirmDeleteId(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="icon-btn"
+                  style={{ width: 24, height: 24, flexShrink: 0 }}
+                  onClick={() => setConfirmDeleteId(log.id)}
+                  aria-label="Delete"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// ─── Add Meal Sheet ───────────────────────────────────────────────────────────
+
+const MEAL_CHIPS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
+function AddMealSheet({ onClose, onSave }: {
+  onClose: () => void;
+  onSave: (entry: { name: string; kcal: number; notes: string }) => void;
+}) {
+  const [name, setName] = useState('');
+  const [kcal, setKcal] = useState('');
+  const [notes, setNotes] = useState('');
+  const canSave = name.trim() && Number(kcal) > 0;
+
+  return (
+    <div className="meal-sheet-overlay" onClick={onClose}>
+      <div className="meal-sheet" onClick={e => e.stopPropagation()}>
+        <div className="meal-sheet__header">
+          <span className="meal-sheet__title">Add Meal</span>
+          <button className="icon-btn" onClick={onClose} aria-label="Close">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Quick chips */}
+        <div className="meal-chips">
+          {MEAL_CHIPS.map(chip => (
+            <button
+              key={chip}
+              className={`meal-chip${name === chip ? ' active' : ''}`}
+              onClick={() => setName(name === chip ? '' : chip)}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+
+        {/* Name */}
+        <div className="meal-field">
+          <input
+            className="input"
+            type="text"
+            placeholder="Meal name…"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            autoFocus
+          />
+        </div>
+
+        {/* Calories */}
+        <div className="meal-field meal-kcal-row">
+          <input
+            className="input meal-kcal-input"
+            type="number"
+            inputMode="numeric"
+            placeholder="0"
+            value={kcal}
+            onChange={e => setKcal(e.target.value)}
+          />
+          <span className="meal-kcal-unit">kcal</span>
+        </div>
+
+        {/* Notes */}
+        <div className="meal-field">
+          <textarea
+            className="input"
+            placeholder="Notes (optional)…"
+            rows={2}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            style={{ resize: 'none', fontFamily: 'var(--body)', fontSize: 14 }}
+          />
+        </div>
+
+        <div className="meal-sheet__actions">
+          <button className="btn outline btn-full" onClick={onClose}>Cancel</button>
+          <button
+            className="btn primary btn-full"
+            disabled={!canSave}
+            onClick={() => onSave({ name: name.trim(), kcal: Math.round(Number(kcal)), notes })}
+          >
+            Add Meal
           </button>
         </div>
       </div>
