@@ -27,3 +27,8 @@ export async function deleteNutritionLog(id: string): Promise<void> {
   const db = await getDb();
   await idbDelete(db, 'nutritionLog', id);
 }
+
+export async function updateNutritionLog(entry: NutritionLog): Promise<void> {
+  const db = await getDb();
+  await idbPut(db, 'nutritionLog', entry);
+}

@@ -150,6 +150,7 @@ export interface NutritionLog {
   date: string;     // "YYYY-MM-DD"
   name: string;     // "Dal Bhat"
   kcal: number;
+  protein?: number; // grams
   notes: string;
   createdAt: string; // ISO datetime
 }

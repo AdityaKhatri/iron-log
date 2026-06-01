@@ -386,19 +386,30 @@ function BodyTab({ bodyweightEntries }: { bodyweightEntries: Bodyweight[] }) {
 function NutritionTab({ logs }: { logs: NutritionLog[] }) {
   // Build last 14 days of daily totals
   const today = new Date();
-  const days: { date: string; label: string; kcal: number }[] = [];
+  const days: { date: string; label: string; kcal: number; protein: number }[] = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const iso = d.toISOString().slice(0, 10);
     const label = i === 0 ? 'Today' : d.toLocaleDateString('en', { weekday: 'short' }).slice(0, 2);
-    const kcal = logs.filter(l => l.date === iso).reduce((s, l) => s + l.kcal, 0);
-    days.push({ date: iso, label, kcal });
+    const dayLogs = logs.filter(l => l.date === iso);
+    const kcal = dayLogs.reduce((s, l) => s + l.kcal, 0);
+    const protein = dayLogs.reduce((s, l) => s + (l.protein ?? 0), 0);
+    days.push({ date: iso, label, kcal, protein });
   }
 
-  const totalLogged = days.reduce((s, d) => s + d.kcal, 0);
-  const daysWithData = days.filter(d => d.kcal > 0).length;
-  const avgKcal = daysWithData > 0 ? Math.round(totalLogged / daysWithData) : 0;
+  const daysWithKcal = days.filter(d => d.kcal > 0);
+  const daysWithProtein = days.filter(d => d.protein > 0);
+  const avgKcal = daysWithKcal.length > 0
+    ? Math.round(daysWithKcal.reduce((s, d) => s + d.kcal, 0) / daysWithKcal.length)
+    : 0;
+  const avgProtein = daysWithProtein.length > 0
+    ? Math.round(daysWithProtein.reduce((s, d) => s + d.protein, 0) / daysWithProtein.length)
+    : 0;
+  const hasProtein = daysWithProtein.length > 0;
+
+  // Protein line chart: only days that have protein data logged
+  const proteinPoints = daysWithProtein.map(d => ({ label: d.label, value: d.protein }));
 
   if (logs.length === 0) {
     return (
@@ -416,8 +427,14 @@ function NutritionTab({ logs }: { logs: NutritionLog[] }) {
             <span className="prog-bw-stat-val">{avgKcal}</span>
             <span className="prog-bw-stat-label">Avg kcal/day</span>
           </div>
+          {hasProtein && (
+            <div className="prog-bw-stat">
+              <span className="prog-bw-stat-val">{avgProtein}g</span>
+              <span className="prog-bw-stat-label">Avg protein/day</span>
+            </div>
+          )}
           <div className="prog-bw-stat">
-            <span className="prog-bw-stat-val">{daysWithData}</span>
+            <span className="prog-bw-stat-val">{daysWithKcal.length}</span>
             <span className="prog-bw-stat-label">Days logged</span>
           </div>
         </div>
@@ -429,6 +446,12 @@ function NutritionTab({ logs }: { logs: NutritionLog[] }) {
           color="var(--grp-main)"
         />
       </div>
+      {hasProtein && (
+        <div className="prog-section">
+          <div className="prog-chart-label">Daily protein (g) — logged days</div>
+          <LineChart points={proteinPoints} color="#7c6af5" />
+        </div>
+      )}
     </div>
   );
 }

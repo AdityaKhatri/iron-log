@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useActiveSession } from '../../context/ActiveSessionContext';
 import { usePlanDay } from '../../hooks/usePlanDay';
-import { useQuickStats } from '../../hooks/useSessions';
+import { LogoMark } from '../../components/Logo/Logo';
+import { getAllSessions } from '../../db/sessions';
 import { getWorkout } from '../../db/workouts';
 import { getSessionsByDate } from '../../db/sessions';
 import { getAllExercises } from '../../db/exercises';
-import { getNutritionLogsByDate, addNutritionLog, deleteNutritionLog } from '../../db/nutritionLog';
+import { getNutritionLogsByDate, addNutritionLog, deleteNutritionLog, updateNutritionLog } from '../../db/nutritionLog';
+import { getAllBodyweight } from '../../db/bodyweight';
 import { getActiveGoalForDate } from '../../db/calorieGoalLog';
 import { Modal } from '../../components/Modal/Modal';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { Topbar } from '../../components/Topbar/Topbar';
 import { CategoryIcon, CATEGORY_COLOR, CATEGORY_LABEL } from '../../components/CategoryIcon/CategoryIcon';
-import { today, formatDisplayDate, formatDuration } from '../../lib/date';
+import { today, toISODate, formatDisplayDate, formatDuration } from '../../lib/date';
 import { extractYouTubeId } from '../../lib/youtube';
 import { uid } from '../../lib/ids';
 import type { Session, SessionGroup, SessionBlock, SessionSet, Workout, Exercise, NutritionLog, CalorieGoalLog } from '../../types';
@@ -90,9 +92,9 @@ function templateToSessionGroups(workout: Workout, exerciseMap: Map<string, Exer
 
 export function TodayView() {
   const { session, paused, startSession, resumeSession, unpauseSession } = useActiveSession();
-  const { day } = usePlanDay(TODAY);
-  const { streak, thisWeek, allTime } = useQuickStats();
-  // All finished sessions logged today, keyed by session id
+  const [selectedNutritionDate, setSelectedNutritionDate] = useState(TODAY);
+  const { day } = usePlanDay(selectedNutritionDate);
+  // All finished sessions for the selected date, keyed by session id
   const [doneSessions, setDoneSessions] = useState<Map<string, Session>>(new Map());
   const [viewingWorkout, setViewingWorkout] = useState<Workout | null>(null);
   const [viewingSession, setViewingSession] = useState<Session | null>(null);
@@ -100,31 +102,44 @@ export function TodayView() {
   const [nutritionLogs, setNutritionLogs] = useState<NutritionLog[]>([]);
   const [calorieGoal, setCalorieGoal] = useState<CalorieGoalLog | null>(null);
   const [showAddMeal, setShowAddMeal] = useState(false);
+  const [editingLog, setEditingLog] = useState<NutritionLog | null>(null);
+  const [proteinGoalG, setProteinGoalG] = useState<number | null>(null);
+  const [weekSessionDates, setWeekSessionDates] = useState<Set<string>>(new Set());
 
-  // Load finished sessions for today (all of them, including freestyle)
+  // Load finished sessions for the selected date
   useEffect(() => {
-    getSessionsByDate(TODAY).then(sessions => {
+    getSessionsByDate(selectedNutritionDate).then(sessions => {
       setDoneSessions(new Map(
         sessions.filter(s => s.finishedAt).map(s => [s.id, s])
       ));
     });
-  }, [session]); // re-run whenever active session changes (e.g. after finishing)
+  }, [selectedNutritionDate, session]); // re-run on date change or when active session finishes
 
   useEffect(() => {
     import('../../db/meta').then(m => m.getProfile()).then(p => { if (p.name) setProfileName(p.name); });
+    getAllSessions().then(sessions => {
+      setWeekSessionDates(new Set(sessions.filter(s => s.finishedAt).map(s => s.date)));
+    });
+    getAllBodyweight().then(bws => {
+      const latest = bws.sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+      if (latest) setProteinGoalG(Math.round(latest.weight * 2));
+    });
+  }, []);
+
+  useEffect(() => {
     Promise.all([
-      getNutritionLogsByDate(TODAY),
-      getActiveGoalForDate(TODAY),
+      getNutritionLogsByDate(selectedNutritionDate),
+      getActiveGoalForDate(selectedNutritionDate),
     ]).then(([logs, goal]) => {
       setNutritionLogs(logs.sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
       setCalorieGoal(goal);
     });
-  }, []);
+  }, [selectedNutritionDate]);
 
   async function startFreestyle() {
     const s: Session = {
       id: uid('sess'),
-      date: TODAY,
+      date: selectedNutritionDate,
       startedAt: Date.now(),
       finishedAt: null,
       durationMs: null,
@@ -144,7 +159,7 @@ export function TodayView() {
     const exerciseMap = new Map(exercises.map(e => [e.id, e]));
     const s: Session = {
       id: uid('sess'),
-      date: TODAY,
+      date: selectedNutritionDate,
       startedAt: Date.now(),
       finishedAt: null,
       durationMs: null,
@@ -180,13 +195,8 @@ export function TodayView() {
     );
   }
 
-  // Build day-of-week + date crumb
-  const dateObj = new Date(TODAY + 'T00:00:00');
-  const dayAbbr = dateObj.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase();
-
   return (
     <div className="today-view">
-      <Topbar title={`${dayAbbr} · ${TODAY}`} />
 
       {paused && session && (
         <div className="session-resume-banner">
@@ -202,105 +212,99 @@ export function TodayView() {
 
       <div className="today-idle">
         <div className="today-hero">
-          <div className="today-greeting">{getGreeting(profileName)}</div>
+          <div className="today-hero-top">
+            <LogoMark size={28} />
+            <div className="today-greeting">{getGreeting(profileName)}</div>
+          </div>
           <div className="today-quote">"{getDailyQuote()}"</div>
-          <div className="today-hero-date">{formatDisplayDate(TODAY)}</div>
         </div>
 
-        {/* Stats */}
-        <div className="stats-grid">
-          <div className="stat">
-            <div className="v">{streak}</div>
-            <div className="k">Streak</div>
-          </div>
-          <div className="stat">
-            <div className="v">{thisWeek}</div>
-            <div className="k">This week</div>
-          </div>
-          <div className="stat">
-            <div className="v">{allTime}</div>
-            <div className="k">All time</div>
-          </div>
-        </div>
+        {/* Weekly ring + date nav */}
+        <WeekRing sessionDates={weekSessionDates} />
+        <DateNav date={selectedNutritionDate} onChange={setSelectedNutritionDate} />
 
-        {/* Planned Workouts */}
+        {/* Workouts / Movement */}
         {(() => {
           const allSessions = Array.from(doneSessions.values());
           const plannedWorkoutIds = new Set(day?.workouts.map(pw => pw.workoutId) ?? []);
-          // Sessions not tied to any planned workout for today
           const unplannedSessions = allSessions.filter(
             s => !s.workoutId || !plannedWorkoutIds.has(s.workoutId)
           );
+          const hasPlanned = day && day.workouts.length > 0;
+          const hasAnything = hasPlanned || unplannedSessions.length > 0;
 
           return (
-            <>
-              {day && day.workouts.length > 0 && (
-                <div className="plan-section">
-                  <div className="plan-section-label">Planned</div>
-                  {day.workouts.map(pw => {
-                    const doneSession = allSessions.find(s => s.workoutId === pw.workoutId) ?? null;
-                    return (
-                      <PlannedWorkoutCard
-                        key={pw.workoutId}
-                        workoutId={pw.workoutId}
-                        note={pw.note}
-                        doneSession={doneSession}
-                        onEdit={() => resumeSession(doneSession!)}
-                        onView={w => setViewingWorkout(w)}
-                        onViewSession={s => setViewingSession(s)}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+            <div className="plan-section">
+              <div className="plan-section-header">
+                <span className="plan-section-label" style={{ marginBottom: 0 }}>Workouts</span>
+                <button className="btn outline btn-sm" onClick={startFreestyle}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Freestyle
+                </button>
+              </div>
 
-              {unplannedSessions.length > 0 && (
-                <div className="plan-section">
-                  <div className="plan-section-label">Completed Today</div>
-                  {unplannedSessions.map(s => (
-                    <button
-                      key={s.id}
-                      className="plan-card plan-card--done"
-                      style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                      onClick={() => setViewingSession(s)}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div className="plan-card__name">{s.workoutName}</div>
-                        <div className="plan-card__meta">
-                          {s.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises
-                          {s.durationMs ? ` · ${formatDuration(s.durationMs)}` : ''}
-                        </div>
-                      </div>
-                      <span className="plan-card__done-badge">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        Done
-                      </span>
-                    </button>
-                  ))}
+              {hasPlanned && day!.workouts.map(pw => {
+                const doneSession = allSessions.find(s => s.workoutId === pw.workoutId) ?? null;
+                return (
+                  <PlannedWorkoutCard
+                    key={pw.workoutId}
+                    workoutId={pw.workoutId}
+                    note={pw.note}
+                    doneSession={doneSession}
+                    onEdit={() => resumeSession(doneSession!)}
+                    onView={w => setViewingWorkout(w)}
+                    onViewSession={s => setViewingSession(s)}
+                  />
+                );
+              })}
+
+              {unplannedSessions.map(s => (
+                <button
+                  key={s.id}
+                  className="plan-card plan-card--done"
+                  style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                  onClick={() => setViewingSession(s)}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div className="plan-card__name">{s.workoutName}</div>
+                    <div className="plan-card__meta">
+                      {s.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises
+                      {s.durationMs ? ` · ${formatDuration(s.durationMs)}` : ''}
+                    </div>
+                  </div>
+                  <span className="plan-card__done-badge">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Done
+                  </span>
+                </button>
+              ))}
+
+              {!hasAnything && (
+                <div className="plan-empty">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="plan-empty__icon">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <span>Nothing planned for this day</span>
                 </div>
               )}
-            </>
+            </div>
           );
         })()}
-
-        {/* Freestyle */}
-        <div className="quick-start-section">
-          <div className="plan-section-label" style={{ marginBottom: 8 }}>Quick Start</div>
-          <button className="btn outline btn-full" style={{ justifyContent: 'center' }} onClick={startFreestyle}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Start Freestyle Session
-          </button>
-        </div>
 
         {/* Nutrition */}
         <NutritionSection
           logs={nutritionLogs}
           goal={calorieGoal}
+          proteinGoalG={proteinGoalG}
           onAdd={() => setShowAddMeal(true)}
+          onEdit={log => setEditingLog(log)}
           onDelete={async (id) => {
             await deleteNutritionLog(id);
             setNutritionLogs(prev => prev.filter(l => l.id !== id));
@@ -312,9 +316,25 @@ export function TodayView() {
         <AddMealSheet
           onClose={() => setShowAddMeal(false)}
           onSave={async (entry) => {
-            const log = await addNutritionLog({ ...entry, date: TODAY });
+            const log = await addNutritionLog({ ...entry, protein: entry.protein ?? undefined, date: selectedNutritionDate });
             setNutritionLogs(prev => [...prev, log].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
             setShowAddMeal(false);
+          }}
+        />
+      )}
+
+      {editingLog && (
+        <AddMealSheet
+          initialLog={editingLog}
+          onClose={() => setEditingLog(null)}
+          onSave={async (entry) => {
+            const updated: NutritionLog = { ...editingLog, ...entry, protein: entry.protein ?? undefined };
+            await updateNutritionLog(updated);
+            setNutritionLogs(prev =>
+              prev.map(l => l.id === updated.id ? updated : l)
+                .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+            );
+            setEditingLog(null);
           }}
         />
       )}
@@ -322,19 +342,117 @@ export function TodayView() {
   );
 }
 
+// ─── Week Ring ────────────────────────────────────────────────────────────────
+
+const DAY_LETTER: Record<number, string> = { 0: 'S', 1: 'M', 2: 'T', 3: 'W', 4: 'T', 5: 'F', 6: 'S' };
+
+function WeekRing({ sessionDates }: { sessionDates: Set<string> }) {
+  const today = new Date(TODAY + 'T00:00:00');
+  // Week starts Saturday: getDay() 6=Sat,0=Sun,1=Mon,...,5=Fri
+  const daysSinceSat = today.getDay() === 6 ? 0 : today.getDay() + 1;
+
+  // Active streak: consecutive workout days going backwards from today (or yesterday if no workout today)
+  const streakDates = new Set<string>();
+  const streakCur = new Date(today);
+  if (!sessionDates.has(TODAY)) streakCur.setDate(streakCur.getDate() - 1);
+  while (true) {
+    const iso = toISODate(streakCur);
+    if (sessionDates.has(iso)) { streakDates.add(iso); streakCur.setDate(streakCur.getDate() - 1); }
+    else break;
+  }
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - daysSinceSat + i);
+    const iso = toISODate(d);
+    return {
+      iso,
+      letter: DAY_LETTER[d.getDay()],
+      isToday: iso === TODAY,
+      isFuture: d > today,
+      hasWorkout: sessionDates.has(iso),
+      isStreak: streakDates.has(iso),
+    };
+  });
+
+  return (
+    <div className="week-ring">
+      {days.map(day => (
+        <div key={day.iso} className="week-day">
+          <div className={[
+            'week-day__circle',
+            day.hasWorkout ? 'week-day__circle--done' : '',
+            day.isToday ? 'week-day__circle--today' : '',
+            day.isFuture ? 'week-day__circle--future' : '',
+            day.isStreak ? 'week-day__circle--streak' : '',
+          ].filter(Boolean).join(' ')}>
+            {day.letter}
+          </div>
+          {/* Always render dot — hidden for non-today to keep column heights equal */}
+          <div className={`week-day__dot${day.isToday ? '' : ' week-day__dot--hidden'}`} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Date Nav ────────────────────────────────────────────────────────────────
+
+function DateNav({ date, onChange }: { date: string; onChange: (d: string) => void }) {
+  const isToday = date === TODAY;
+
+  function shift(delta: number) {
+    const d = new Date(date + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    const next = toISODate(d);
+    if (next <= TODAY) onChange(next);
+  }
+
+  const label = isToday ? 'Today' : formatDisplayDate(date);
+
+  return (
+    <div className="date-nav">
+      <button className="icon-btn date-nav__arrow" onClick={() => shift(-1)} aria-label="Previous day">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+      <span className="date-nav__label">{label}</span>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        {!isToday && (
+          <button className="btn outline btn-sm" onClick={() => onChange(TODAY)} style={{ fontSize: 10, padding: '2px 8px' }}>
+            Today
+          </button>
+        )}
+        <button className="icon-btn date-nav__arrow" onClick={() => shift(1)} disabled={isToday} aria-label="Next day">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Nutrition Section ────────────────────────────────────────────────────────
 
-function NutritionSection({ logs, goal, onAdd, onDelete }: {
+function NutritionSection({ logs, goal, proteinGoalG, onAdd, onEdit, onDelete }: {
   logs: NutritionLog[];
   goal: CalorieGoalLog | null;
+  proteinGoalG: number | null;
   onAdd: () => void;
+  onEdit: (log: NutritionLog) => void;
   onDelete: (id: string) => void;
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const totalKcal = logs.reduce((sum, l) => sum + l.kcal, 0);
+  const totalProtein = logs.reduce((sum, l) => sum + (l.protein ?? 0), 0);
   const goalKcal = goal?.targetCalories ?? null;
-  const progress = goalKcal ? Math.min(totalKcal / goalKcal, 1) : 0;
-  const over = goalKcal && totalKcal > goalKcal;
+  const kcalProgress = goalKcal ? Math.min(totalKcal / goalKcal, 1) : 0;
+const kcalOver = goalKcal && totalKcal > goalKcal;
+  const proteinOver = proteinGoalG && totalProtein > proteinGoalG;
+  const hasProteinData = logs.some(l => l.protein != null);
 
   return (
     <div className="nutrition-section">
@@ -348,37 +466,47 @@ function NutritionSection({ logs, goal, onAdd, onDelete }: {
         </button>
       </div>
 
-      <div className="nutrition-total">
-        <span className={`nutrition-consumed${over ? ' nutrition-consumed--over' : ''}`}>
-          {totalKcal.toLocaleString()}
-        </span>
-        {goalKcal ? (
-          <span className="nutrition-goal-label">/ {goalKcal.toLocaleString()} kcal</span>
-        ) : (
-          <span className="nutrition-goal-label">kcal today</span>
+      {/* Stats row */}
+      <div className="nutrition-stats">
+        <div className="nutrition-stat">
+          <span className={`nutrition-stat__val${kcalOver ? ' --over' : ''}`}>{totalKcal.toLocaleString()}</span>
+          <span className="nutrition-stat__label">{goalKcal ? `/ ${goalKcal.toLocaleString()} kcal` : 'kcal'}</span>
+        </div>
+        {hasProteinData && (
+          <span className={`nutrition-protein-pill${proteinOver ? ' --over' : ''}`}>{totalProtein}g protein</span>
         )}
       </div>
 
+      {/* Progress bars */}
       {goalKcal && (
         <div className="nutrition-bar">
-          <div
-            className={`nutrition-bar__fill${over ? ' nutrition-bar__fill--over' : ''}`}
-            style={{ width: `${progress * 100}%` }}
-          />
+          <div className={`nutrition-bar__fill${kcalOver ? ' nutrition-bar__fill--over' : ''}`}
+            style={{ width: `${kcalProgress * 100}%` }} />
         </div>
       )}
 
+      {/* Meal list */}
       {logs.length > 0 && (
         <div className="nutrition-log-list">
           {logs.map(log => (
-            <div key={log.id} className="nutrition-log-row">
+            <div
+              key={log.id}
+              className="nutrition-log-row"
+              onClick={() => { setConfirmDeleteId(null); onEdit(log); }}
+              style={{ cursor: 'pointer' }}
+            >
               <div className="nutrition-log-row__info">
                 <span className="nutrition-log-row__name">{log.name}</span>
                 {log.notes && <span className="nutrition-log-row__notes">{log.notes}</span>}
               </div>
-              <span className="nutrition-log-row__kcal">{log.kcal.toLocaleString()} kcal</span>
+              <div className="nutrition-log-row__right">
+                <span className="nutrition-log-row__kcal">{log.kcal.toLocaleString()} kcal</span>
+                {log.protein != null && (
+                  <span className="nutrition-log-row__protein">{log.protein}g</span>
+                )}
+              </div>
               {confirmDeleteId === log.id ? (
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                   <button
                     className="btn btn-sm"
                     style={{ background: '#E53E3E', borderColor: '#E53E3E', color: '#fff', padding: '3px 10px' }}
@@ -398,7 +526,7 @@ function NutritionSection({ logs, goal, onAdd, onDelete }: {
                 <button
                   className="icon-btn"
                   style={{ width: 24, height: 24, flexShrink: 0 }}
-                  onClick={() => setConfirmDeleteId(log.id)}
+                  onClick={e => { e.stopPropagation(); setConfirmDeleteId(log.id); }}
                   aria-label="Delete"
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -410,7 +538,6 @@ function NutritionSection({ logs, goal, onAdd, onDelete }: {
           ))}
         </div>
       )}
-
     </div>
   );
 }
@@ -419,20 +546,66 @@ function NutritionSection({ logs, goal, onAdd, onDelete }: {
 
 const MEAL_CHIPS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
-function AddMealSheet({ onClose, onSave }: {
+const AI_PROMPT = (desc: string) =>
+  `You are a nutrition estimator. The user will describe food they ate.
+Return ONLY valid JSON — no markdown, no explanation, nothing else — in this exact format:
+{"title":"brief meal name","total_cal":number,"total_protein":number,"status":"success"}
+Use status "failure" only if the description is completely too vague to estimate even roughly (e.g. just "food" or "stuff").
+For anything with recognisable food items, always return "success" with your best estimate.
+
+Food description: ${desc}`;
+
+type AiState = 'idle' | 'loading' | 'success' | 'error';
+
+function AddMealSheet({ onClose, onSave, initialLog }: {
   onClose: () => void;
-  onSave: (entry: { name: string; kcal: number; notes: string }) => void;
+  onSave: (entry: { name: string; kcal: number; protein: number | null; notes: string }) => void;
+  initialLog?: NutritionLog;
 }) {
-  const [name, setName] = useState('');
-  const [kcal, setKcal] = useState('');
-  const [notes, setNotes] = useState('');
+  const [description, setDescription] = useState('');
+  const [name, setName] = useState(initialLog?.name ?? '');
+  const [kcal, setKcal] = useState(initialLog?.kcal ? String(initialLog.kcal) : '');
+  const [protein, setProtein] = useState<number | null>(initialLog?.protein ?? null);
+  const [notes, setNotes] = useState(initialLog?.notes ?? '');
+  const [aiState, setAiState] = useState<AiState>('idle');
+  const [aiError, setAiError] = useState('');
+
+  const canCalculate = description.trim().length > 3;
   const canSave = name.trim() && Number(kcal) > 0;
+
+  async function calculateFromAI() {
+    setAiState('loading');
+    setAiError('');
+    try {
+      const raw = await window.puter.ai.chat(AI_PROMPT(description.trim()));
+      const text = typeof raw === 'string'
+        ? raw
+        : raw?.message?.content?.[0]?.text ?? '';
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('No JSON in response');
+      const json = JSON.parse(match[0]) as {
+        title?: string; total_cal?: number; total_protein?: number; status?: string;
+      };
+      if (json.status === 'failure') {
+        setAiState('error');
+        setAiError('Too vague to estimate — describe the food in more detail.');
+        return;
+      }
+      setName(json.title ?? description.trim());
+      setKcal(String(Math.round(json.total_cal ?? 0)));
+      setProtein(json.total_protein != null ? Math.round(json.total_protein) : null);
+      setAiState('success');
+    } catch {
+      setAiState('error');
+      setAiError('Could not reach AI. Enter calories manually.');
+    }
+  }
 
   return (
     <div className="meal-sheet-overlay" onClick={onClose}>
       <div className="meal-sheet" onClick={e => e.stopPropagation()}>
         <div className="meal-sheet__header">
-          <span className="meal-sheet__title">Add Meal</span>
+          <span className="meal-sheet__title">{initialLog ? 'Edit Meal' : 'Add Meal'}</span>
           <button className="icon-btn" onClick={onClose} aria-label="Close">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -453,7 +626,47 @@ function AddMealSheet({ onClose, onSave }: {
           ))}
         </div>
 
-        {/* Name */}
+        {/* AI description input */}
+        <div className="meal-field">
+          <textarea
+            className="input"
+            placeholder="Describe what you ate… e.g. 2 scrambled eggs, toast with butter, black coffee"
+            rows={3}
+            value={description}
+            onChange={e => { setDescription(e.target.value); setAiState('idle'); }}
+            style={{ resize: 'none', fontFamily: 'var(--body)', fontSize: 14 }}
+            autoFocus
+          />
+        </div>
+
+        {/* Calculate from AI button */}
+        <button
+          className={`meal-ai-btn${aiState === 'loading' ? ' loading' : ''}`}
+          disabled={!canCalculate || aiState === 'loading'}
+          onClick={calculateFromAI}
+        >
+          {aiState === 'loading' ? (
+            <>
+              <span className="meal-ai-spinner" />
+              Estimating…
+            </>
+          ) : (
+            <>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 0 6h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1 0-6h1V6a4 4 0 0 1 4-4z"/>
+                <line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/>
+              </svg>
+              Calculate from AI
+            </>
+          )}
+        </button>
+
+        {/* AI error */}
+        {aiState === 'error' && (
+          <div className="meal-ai-error">{aiError}</div>
+        )}
+
+        {/* Filled fields — name, kcal, protein */}
         <div className="meal-field">
           <input
             className="input"
@@ -461,11 +674,9 @@ function AddMealSheet({ onClose, onSave }: {
             placeholder="Meal name…"
             value={name}
             onChange={e => setName(e.target.value)}
-            autoFocus
           />
         </div>
 
-        {/* Calories */}
         <div className="meal-field meal-kcal-row">
           <input
             className="input meal-kcal-input"
@@ -476,17 +687,26 @@ function AddMealSheet({ onClose, onSave }: {
             onChange={e => setKcal(e.target.value)}
           />
           <span className="meal-kcal-unit">kcal</span>
+          <input
+            className="input meal-kcal-input"
+            type="number"
+            inputMode="numeric"
+            placeholder="0"
+            value={protein ?? ''}
+            onChange={e => setProtein(e.target.value ? Math.round(Number(e.target.value)) : null)}
+            style={{ maxWidth: 64 }}
+          />
+          <span className="meal-kcal-unit">g prot</span>
         </div>
 
         {/* Notes */}
         <div className="meal-field">
-          <textarea
+          <input
             className="input"
+            type="text"
             placeholder="Notes (optional)…"
-            rows={2}
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            style={{ resize: 'none', fontFamily: 'var(--body)', fontSize: 14 }}
           />
         </div>
 
@@ -495,9 +715,9 @@ function AddMealSheet({ onClose, onSave }: {
           <button
             className="btn primary btn-full"
             disabled={!canSave}
-            onClick={() => onSave({ name: name.trim(), kcal: Math.round(Number(kcal)), notes })}
+            onClick={() => onSave({ name: name.trim(), kcal: Math.round(Number(kcal)), protein, notes })}
           >
-            Add Meal
+            {initialLog ? 'Save Changes' : 'Add Meal'}
           </button>
         </div>
       </div>
