@@ -146,13 +146,14 @@ export interface ProfileRecord {
 
 // ─── Nutrition ────────────────────────────────────────────────────────────────
 export interface NutritionLog {
-  id: string;       // 'nl_<timestamp>'
-  date: string;     // "YYYY-MM-DD"
-  name: string;     // "Dal Bhat"
+  id: string;              // 'nl_<timestamp>'
+  date: string;            // "YYYY-MM-DD"
+  name: string;            // "Dal Bhat"
   kcal: number;
-  protein?: number; // grams
+  protein?: number;        // grams
   notes: string;
-  createdAt: string; // ISO datetime
+  aiDescription?: string;  // raw description entered for AI estimation
+  createdAt: string;       // ISO datetime
 }
 
 export interface CalorieGoalLog {

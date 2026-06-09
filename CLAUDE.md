@@ -30,6 +30,34 @@ This document is the single source of truth for the data model, intended UX, and
 
 If a future need genuinely requires a build step (e.g., we want to use TypeScript or a component library), document the tradeoff in this file before introducing it.
 
+### AI integration
+
+AI features (e.g. calorie estimation from food description) call a **Cloudflare Worker proxy** that forwards requests to the Gemini Flash API. The proxy URL is configured via `VITE_GEMINI_PROXY_URL` in the `.env` file (dev default: `http://localhost:8787/ai`).
+
+**Canonical pattern for all AI calls — use `callGemini()` defined in `TodayView.tsx`:**
+
+```ts
+const GEMINI_PROXY_URL = import.meta.env.VITE_GEMINI_PROXY_URL as string;
+
+async function callGemini(prompt: string): Promise<string | null> {
+  try {
+    const res = await fetch(GEMINI_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    return text.replace(/```json|```/g, '').trim();
+  } catch {
+    return null;
+  }
+}
+```
+
+Proxy contract: `POST <PROXY_URL>` with `{ "prompt": string }` → raw Gemini API JSON. The client builds the prompt and parses the response. On failure, `callGemini` returns `null` — show "AI unavailable — try again or enter manually", never an auth prompt.
+
 ---
 
 ## Data model

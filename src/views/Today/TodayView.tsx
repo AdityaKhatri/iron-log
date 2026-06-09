@@ -604,6 +604,27 @@ const kcalOver = goalKcal && totalKcal > goalKcal;
 
 const MEAL_CHIPS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
+const GEMINI_PROXY_URL = import.meta.env.VITE_GEMINI_PROXY_URL as string;
+
+async function callGemini(prompt: string): Promise<string> {
+  const res = await fetch(GEMINI_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  });
+  const data = await res.json() as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    error?: string | { message?: string };
+  };
+  if (!res.ok) {
+    const err = data.error;
+    throw new Error(typeof err === 'string' ? err : err?.message ?? 'AI unavailable — try again or enter manually.');
+  }
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Empty response from AI.');
+  return text.replace(/```json|```/g, '').trim();
+}
+
 const AI_PROMPT = (desc: string) =>
   `You are a nutrition estimator. The user will describe food they ate.
 Return ONLY valid JSON — no markdown, no explanation, nothing else — in this exact format:
@@ -617,10 +638,10 @@ type AiState = 'idle' | 'loading' | 'success' | 'error';
 
 function AddMealSheet({ onClose, onSave, initialLog }: {
   onClose: () => void;
-  onSave: (entry: { name: string; kcal: number; protein: number | null; notes: string }) => void;
+  onSave: (entry: { name: string; kcal: number; protein: number | null; notes: string; aiDescription: string }) => void;
   initialLog?: NutritionLog;
 }) {
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(initialLog?.aiDescription ?? '');
   const [name, setName] = useState(initialLog?.name ?? '');
   const [kcal, setKcal] = useState(initialLog?.kcal ? String(initialLog.kcal) : '');
   const [protein, setProtein] = useState<number | null>(initialLog?.protein ?? null);
@@ -635,12 +656,9 @@ function AddMealSheet({ onClose, onSave, initialLog }: {
     setAiState('loading');
     setAiError('');
     try {
-      const raw = await window.puter.ai.chat(AI_PROMPT(description.trim()));
-      const text = typeof raw === 'string'
-        ? raw
-        : raw?.message?.content?.[0]?.text ?? '';
+      const text = await callGemini(AI_PROMPT(description.trim()));
       const match = text.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('No JSON in response');
+      if (!match) throw new Error('No JSON in response.');
       const json = JSON.parse(match[0]) as {
         title?: string; total_cal?: number; total_protein?: number; status?: string;
       };
@@ -653,9 +671,9 @@ function AddMealSheet({ onClose, onSave, initialLog }: {
       setKcal(String(Math.round(json.total_cal ?? 0)));
       setProtein(json.total_protein != null ? Math.round(json.total_protein) : null);
       setAiState('success');
-    } catch {
+    } catch (e) {
       setAiState('error');
-      setAiError('Could not reach AI. Enter calories manually.');
+      setAiError(e instanceof Error ? e.message : 'AI unavailable — try again or enter manually.');
     }
   }
 
@@ -773,7 +791,7 @@ function AddMealSheet({ onClose, onSave, initialLog }: {
           <button
             className="btn primary btn-full"
             disabled={!canSave}
-            onClick={() => onSave({ name: name.trim(), kcal: Math.round(Number(kcal)), protein, notes })}
+            onClick={() => onSave({ name: name.trim(), kcal: Math.round(Number(kcal)), protein, notes, aiDescription: description.trim() })}
           >
             {initialLog ? 'Save Changes' : 'Add Meal'}
           </button>
