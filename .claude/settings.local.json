@@ -23,7 +23,8 @@
       "Bash(npm list:*)",
       "Bash(node:*)",
       "Bash(npx eslint:*)",
-      "Bash(pnpm typecheck:*)"
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm add:*)"
     ]
   }
 }

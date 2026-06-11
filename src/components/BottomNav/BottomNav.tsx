@@ -39,7 +39,7 @@ const PRIMARY_TABS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
-const MORE_VIEWS: ViewId[] = ['library', 'profile', 'progress', 'editor'];
+const MORE_VIEWS: ViewId[] = ['library', 'profile', 'progress', 'editor', 'analyze'];
 
 interface BottomNavProps {
   current: ViewId;

@@ -1,5 +1,5 @@
 // ─── View Routing ────────────────────────────────────────────────────────────
-export type ViewId = 'today' | 'plan' | 'workouts' | 'library' | 'profile' | 'progress' | 'editor';
+export type ViewId = 'today' | 'plan' | 'workouts' | 'library' | 'profile' | 'progress' | 'editor' | 'analyze';
 
 // ─── Exercises ───────────────────────────────────────────────────────────────
 export type EquipmentType =

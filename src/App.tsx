@@ -7,6 +7,7 @@ import { WorkoutsView } from './views/Workouts/WorkoutsView';
 import { ExercisesView } from './views/Exercises/ExercisesView';
 import { ProfileView } from './views/Profile/ProfileView';
 import { ProgressView } from './views/Progress/ProgressView';
+import { AnalyzeView } from './views/Analyze/AnalyzeView';
 import { ExerciseEditorView } from './views/ExerciseEditor/ExerciseEditorView';
 import { OnboardingView } from './views/Onboarding/OnboardingView';
 import { ActiveSessionProvider } from './context/ActiveSessionContext';
@@ -43,6 +44,18 @@ const MORE_ITEMS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
         <line x1="12" y1="20" x2="12" y2="4" />
         <line x1="6" y1="20" x2="6" y2="14" />
         <line x1="3" y1="20" x2="21" y2="20" />
+      </svg>
+    ),
+  },
+  {
+    id: 'analyze',
+    label: 'Analyze',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        <line x1="8" y1="11" x2="14" y2="11" />
+        <line x1="11" y1="8" x2="11" y2="14" />
       </svg>
     ),
   },
@@ -269,6 +282,7 @@ export function App() {
           {view === 'library'  && <ExercisesView onOpenEditor={() => setView('editor')} />}
           {view === 'profile'  && <ProfileView />}
           {view === 'progress' && <ProgressView onBack={() => setView('today')} />}
+          {view === 'analyze'  && <AnalyzeView onBack={() => setView('today')} />}
           {view === 'editor'   && <ExerciseEditorView onBack={() => setView('library')} />}
         </main>
         <ConditionalNav current={navView} onChange={setView} onMore={() => setMoreOpen(true)} />
