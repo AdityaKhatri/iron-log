@@ -78,6 +78,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           account: { email: meta.email, name: meta.name },
           lastSync: meta.lastSync,
         }));
+        // Auto-sync on app open if already connected
+        try {
+          const t = await getToken(true);
+          await syncNowInternal(t);
+        } catch {
+          // Silent fail — user can sync manually later
+        }
       }
 
       if (redirectResult) {
