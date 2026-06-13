@@ -121,7 +121,7 @@ export function ShareModal({ workout, onClose }: Props) {
             ) : (
               <div className="share-modal__qr">
                 <canvas ref={canvasRef} className="share-qr-canvas" />
-                <p className="share-modal__scan-hint">Scan to import into IronLog</p>
+                <p className="share-modal__scan-hint">Scan to import into Raise That Bar</p>
               </div>
             )}
 

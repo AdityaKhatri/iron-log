@@ -52,7 +52,7 @@ If any name doesn't match exactly, replace it with one that does.`;
 // ─── Single workout prompt ────────────────────────────────────────────────────
 
 export function buildSinglePrompt(exercises: Exercise[]): string {
-  return `You are a workout planning assistant for IronLog, a workout tracking app.
+  return `You are a workout planning assistant for Raise That Bar, a workout tracking app.
 
 ${buildLibrarySection(exercises)}
 
@@ -93,7 +93,7 @@ When the user approves the workout, output ONLY the following JSON block — no 
 // ─── Week plan prompt ─────────────────────────────────────────────────────────
 
 export function buildPlanPrompt(days: number, exercises: Exercise[]): string {
-  return `You are a workout planning assistant for IronLog, a workout tracking app. The user wants a ${days}-day weekly workout plan.
+  return `You are a workout planning assistant for Raise That Bar, a workout tracking app. The user wants a ${days}-day weekly workout plan.
 
 ${buildLibrarySection(exercises)}
 

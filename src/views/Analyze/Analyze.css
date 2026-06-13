@@ -11,8 +11,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px;
+  padding: 10px 20px 12px;
+  padding-top: calc(10px + var(--safe-top));
+  min-height: calc(62px + var(--safe-top));
   border-bottom: 1px solid var(--line-1);
+  background: var(--bg);
   flex-shrink: 0;
 }
 

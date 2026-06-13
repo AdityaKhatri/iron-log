@@ -1,74 +1,78 @@
 /**
- * IronLog logo — barbell glyph extracted from the brand file.
+ * RaiseThatBar logo — barbell + heartbeat mark from the RTB brand.
  *
- * Original shapes normalized to viewBox "0 0 140 112" (offset -30,-44 from source).
- * Colors use CSS variables so they adapt to context (e.g. monochrome use).
+ * Defaults to CSS variables so colors adapt to the active theme.
  */
 
 interface LogoMarkProps {
-  /** Height of the mark in px. Width scales proportionally (140:112 ≈ 5:4). */
   size?: number;
-  /** Override fg color (plates). Defaults to var(--fg). */
-  fg?: string;
-  /** Override dim color (collars). Defaults to var(--fg-mute). */
-  dim?: string;
-  /** Override accent color (bar). Defaults to var(--accent). */
   accent?: string;
+  fg?: string;
 }
 
-export function LogoMark({ size = 24, fg = 'var(--fg)', dim = 'var(--fg-mute)', accent = 'var(--accent)' }: LogoMarkProps) {
-  const w = (size * 140) / 112;
+export function LogoMark({ size = 24, accent = 'var(--fg)', fg = 'var(--fg-dim)' }: LogoMarkProps) {
+  const w = size;
   return (
     <svg
       width={w}
-      height={size}
-      viewBox="0 0 140 112"
+      height={w}
+      viewBox="0 0 200 200"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      {/* Outer left plate */}
-      <rect x="0"   y="14" width="14" height="84"  fill={fg} />
-      {/* Inner left plate */}
-      <rect x="20"  y="0"  width="14" height="112" fill={fg} />
-      {/* Left collar */}
-      <rect x="38"  y="34" width="8"  height="44"  fill={dim} />
-      {/* Barbell bar — accent color */}
-      <rect x="48"  y="48" width="44" height="16"  fill={accent} />
-      {/* Right collar */}
-      <rect x="94"  y="34" width="8"  height="44"  fill={dim} />
-      {/* Inner right plate */}
-      <rect x="106" y="0"  width="14" height="112" fill={fg} />
-      {/* Outer right plate */}
-      <rect x="126" y="14" width="14" height="84"  fill={fg} />
+      <g transform="rotate(-11 100 100)">
+        <polyline
+          points="30,100 78,100 88,100 93,114 100,69 108,126 114,100 122,100 170,100"
+          fill="none"
+          stroke={accent}
+          strokeWidth="9"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        <rect x="42" y="62" width="16" height="76" rx="2" fill={fg} />
+        <rect x="60" y="74" width="12" height="52" rx="2" fill={fg} />
+        <rect x="128" y="74" width="12" height="52" rx="2" fill={fg} />
+        <rect x="142" y="62" width="16" height="76" rx="2" fill={fg} />
+      </g>
     </svg>
   );
 }
 
 interface LogoFullProps {
-  /** Height of the barbell mark portion. Text scales accordingly. */
   markSize?: number;
-  fg?: string;
-  dim?: string;
   accent?: string;
+  fg?: string;
   textColor?: string;
 }
 
-/** Barbell mark + "IRON LOG" wordmark stacked vertically. */
-export function LogoFull({ markSize = 40, fg = 'var(--fg)', dim = 'var(--fg-mute)', accent = 'var(--accent)', textColor = 'var(--fg-dim)' }: LogoFullProps) {
+export function LogoFull({ markSize = 40, accent = 'var(--accent)', fg = 'var(--fg-dim)', textColor = 'var(--fg)' }: LogoFullProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: markSize * 0.3 }}>
-      <LogoMark size={markSize} fg={fg} dim={dim} accent={accent} />
-      <span style={{
-        fontFamily: 'var(--mono)',
-        fontSize: markSize * 0.28,
-        fontWeight: 700,
-        letterSpacing: '0.3em',
-        textTransform: 'uppercase',
-        color: textColor,
-        userSelect: 'none',
-      }}>
-        IRON LOG
-      </span>
+      <LogoMark size={markSize} accent={accent} fg={fg} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: markSize * 0.05 }}>
+        <span style={{
+          fontFamily: "'JetBrains Mono', var(--mono)",
+          fontSize: markSize * 0.2,
+          fontWeight: 600,
+          letterSpacing: '0.4em',
+          textTransform: 'uppercase',
+          color: textColor,
+          userSelect: 'none',
+        }}>
+          RAISE THAT
+        </span>
+        <span style={{
+          fontFamily: "'Space Grotesk', var(--mono)",
+          fontSize: markSize * 0.65,
+          fontWeight: 700,
+          letterSpacing: '-0.04em',
+          color: accent,
+          userSelect: 'none',
+          lineHeight: 1,
+        }}>
+          BAR
+        </span>
+      </div>
     </div>
   );
 }

@@ -399,7 +399,7 @@ function SettingsSection() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `iron-log-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `rtb-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {

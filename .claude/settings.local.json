@@ -24,7 +24,8 @@
       "Bash(node:*)",
       "Bash(npx eslint:*)",
       "Bash(pnpm typecheck:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(npx vite *)"
     ]
   }
 }

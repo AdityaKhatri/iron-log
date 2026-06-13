@@ -1,48 +1,48 @@
 {
-  "id": "/iron-log/",
-  "name": "IronLog",
-  "short_name": "IronLog",
-  "description": "Plan strength workouts, track sets and reps, and monitor your progress — offline-first.",
+  "id": "/",
+  "name": "Raise That Bar",
+  "short_name": "RTB",
+  "description": "Strength training tracker — raise that bar.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "/iron-log/",
-  "scope": "/iron-log/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
-  "background_color": "#15151a",
-  "theme_color": "#15151a",
+  "background_color": "#0C0B0A",
+  "theme_color": "#0C0B0A",
   "orientation": "portrait",
   "categories": ["fitness", "health", "sports"],
   "icons": [
-    { "src": "/iron-log/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/iron-log/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/iron-log/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/iron-log/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "/iron-log/icons/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
   ],
   "shortcuts": [
     {
       "name": "Today's Workout",
       "short_name": "Today",
       "description": "Go to today's workout",
-      "url": "/iron-log/",
-      "icons": [{ "src": "/iron-log/icons/icon-192.png", "sizes": "192x192" }]
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Exercise Library",
       "short_name": "Library",
       "description": "Browse the exercise library",
-      "url": "/iron-log/#exercises",
-      "icons": [{ "src": "/iron-log/icons/icon-192.png", "sizes": "192x192" }]
+      "url": "/#exercises",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ],
   "screenshots": [
     {
-      "src": "/iron-log/icons/icon-512.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "IronLog workout tracker"
+      "label": "Raise That Bar workout tracker"
     }
   ]
 }

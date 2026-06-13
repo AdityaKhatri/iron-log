@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 140" width="660" height="140">
+  
+  <g transform="translate(6,26) scale(0.44)">
+    <g transform="rotate(-11 100 100)">
+      <polyline points="30,100 78,100 88,100 93,114 100,69 108,126 114,100 122,100 170,100" fill="none" stroke="#FF2D55" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"></polyline>
+      <rect x="42" y="62" width="16" height="76" rx="2" fill="#EDE6D6"></rect>
+      <rect x="60" y="74" width="12" height="52" rx="2" fill="#EDE6D6"></rect>
+      <rect x="128" y="74" width="12" height="52" rx="2" fill="#EDE6D6"></rect>
+      <rect x="142" y="62" width="16" height="76" rx="2" fill="#EDE6D6"></rect>
+    </g>
+  </g>
+  <text x="110" y="50" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="600" font-size="16" letter-spacing="9" fill="#EDE6D6">RAISE THAT</text>
+  <text x="107" y="116" font-family="&#39;Space Grotesk&#39;, sans-serif" font-weight="700" font-size="80" letter-spacing="-4" fill="#FF2D55">BAR</text>
+  <line x1="109" y1="129" x2="300" y2="116" stroke="#FF2D55" stroke-width="6"></line>
+</svg>

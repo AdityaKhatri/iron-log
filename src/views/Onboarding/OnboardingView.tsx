@@ -82,7 +82,7 @@ function InstallBanner() {
   if (platform === 'ios') {
     return (
       <div className="ob-install">
-        <div className="ob-install__label">Install IronLog</div>
+        <div className="ob-install__label">Install Raise That Bar</div>
         <ol className="ob-install__steps">
           <li>
             <span className="ob-install__step-icon">
@@ -121,7 +121,7 @@ function InstallBanner() {
   if (platform === 'android' && deferredPrompt) {
     return (
       <div className="ob-install">
-        <div className="ob-install__label">Install IronLog</div>
+        <div className="ob-install__label">Install Raise That Bar</div>
         <button className="btn outline btn-full" onClick={handleInstall}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 2a4 4 0 0 0-4 4v6H5l7 7 7-7h-3V6a4 4 0 0 0-4-4z" />
@@ -135,7 +135,7 @@ function InstallBanner() {
   if (platform === 'android') {
     return (
       <div className="ob-install">
-        <div className="ob-install__label">Install IronLog</div>
+        <div className="ob-install__label">Install Raise That Bar</div>
         <p className="ob-install__note">
           Tap the browser menu <strong>⋮</strong> and select <strong>Add to Home Screen</strong>
         </p>
@@ -172,7 +172,7 @@ function SyncStep({ onStartFresh, onDone }: { onStartFresh: () => void; onDone: 
     <div className="onboarding-step">
       <div className="onboarding-hero">
         <LogoFull markSize={60} />
-        <p className="onboarding-tagline">Your Iron Logbook</p>
+        <p className="onboarding-tagline">Strength training tracker</p>
       </div>
 
       <div className="onboarding-cards">

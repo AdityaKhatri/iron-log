@@ -194,7 +194,7 @@ export async function getUserInfo(token: string): Promise<{ email: string; name:
 
 // ─── Drive appDataFolder helpers ──────────────────────────────────────────────
 
-const BACKUP_FILE_NAME = 'iron-log-backup.json';
+const BACKUP_FILE_NAME = 'rtb-backup.json';
 const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 

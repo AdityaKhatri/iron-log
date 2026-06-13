@@ -1,9 +1,9 @@
-const CACHE = 'iron-log-v6';
+const CACHE = 'rtb-v1';
 
 const SHELL = [
-  '/iron-log/',
-  '/iron-log/index.html',
-  '/iron-log/manifest.webmanifest',
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
 ];
 
 // ── Install ───────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k.startsWith('iron-log-') && k !== CACHE).map(k => caches.delete(k))
+        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -64,7 +64,7 @@ self.addEventListener('fetch', e => {
         caches.match(e.request).then(cached =>
           cached ||
           (e.request.mode === 'navigate'
-            ? caches.match('/iron-log/index.html')
+            ? caches.match('/index.html')
             : new Response('Offline', { status: 503, statusText: 'Service Unavailable' }))
         )
       )
