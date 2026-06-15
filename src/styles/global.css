@@ -803,3 +803,40 @@ select.input {
 .w-full  { width: 100%; }
 .mt-auto { margin-top: auto; }
 .divider { height: 1px; background: var(--line); border: none; margin: 16px 0; }
+
+/* ─── Picker Row (shared by exercise + workout pickers) ─────────────────────── */
+.exercise-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  color: var(--fg);
+  font-size: 15px;
+  transition: background 120ms ease;
+}
+.exercise-picker-row:hover { background: var(--surface); }
+
+/* ─── Splash Screen ─────────────────────────────────────────────────────────── */
+.splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  z-index: 300;
+}
+
+.splash__logo {
+  animation: splash-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes splash-in {
+  0%   { opacity: 0; transform: scale(0.85) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}

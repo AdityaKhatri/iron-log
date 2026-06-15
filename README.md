@@ -90,7 +90,7 @@ See [Google Drive setup](#google-drive-setup) below for how to get that client I
 4. Create an **OAuth 2.0 Client ID** (Web application type)
 5. Add authorized JavaScript origins:
    - `http://localhost:5173` (dev)
-   - `https://raisethatbar.com` (production)
+   - `https://app.raisethatbar.com` (production)
 6. Copy the client ID into `.env`:
    ```
    VITE_GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
@@ -101,7 +101,7 @@ See [Google Drive setup](#google-drive-setup) below for how to get that client I
 
 ## Deployment
 
-Pushing to `main` triggers a GitHub Actions workflow that builds the app and deploys it to GitHub Pages automatically. The site is served at [raisethatbar.com](https://raisethatbar.com) via a custom domain.
+Pushing to `main` triggers a GitHub Actions workflow that builds the app and deploys it to GitHub Pages automatically. The site is served at [app.raisethatbar.com](https://app.raisethatbar.com) via a custom domain.
 
 To enable it in your fork:
 1. Go to **Settings → Pages**

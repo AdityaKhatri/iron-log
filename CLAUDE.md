@@ -1,6 +1,6 @@
 # Raise That Bar
 
-A serverless PWA for planning strength workouts and tracking progress. Hosted on GitHub Pages at raisethatbar.com. Local-first (IndexedDB), with Google Drive sync planned for a later phase.
+A serverless PWA for planning strength workouts and tracking progress. Hosted on GitHub Pages at app.raisethatbar.com. Local-first (IndexedDB), with Google Drive sync planned for a later phase.
 
 This document is the single source of truth for the data model, intended UX, and build order. Update it as decisions evolve — never let code drift ahead of this spec without first updating the spec.
 

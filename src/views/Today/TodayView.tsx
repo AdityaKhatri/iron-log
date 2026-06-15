@@ -3,7 +3,7 @@ import { useActiveSession } from '../../context/ActiveSessionContext';
 import { usePlanDay } from '../../hooks/usePlanDay';
 import { LogoMark } from '../../components/Logo/Logo';
 import { getAllSessions } from '../../db/sessions';
-import { getWorkout } from '../../db/workouts';
+import { getWorkout, getAllWorkouts } from '../../db/workouts';
 import { getSessionsByDate } from '../../db/sessions';
 import { getAllExercises } from '../../db/exercises';
 import { getNutritionLogsByDate, addNutritionLog, deleteNutritionLog, updateNutritionLog } from '../../db/nutritionLog';
@@ -105,6 +105,7 @@ export function TodayView() {
   const [editingLog, setEditingLog] = useState<NutritionLog | null>(null);
   const [proteinGoalG, setProteinGoalG] = useState<number | null>(null);
   const [weekSessionDates, setWeekSessionDates] = useState<Set<string>>(new Set());
+  const [showWorkoutPicker, setShowWorkoutPicker] = useState(false);
 
   // Load finished sessions for the selected date
   useEffect(() => {
@@ -240,12 +241,20 @@ export function TodayView() {
               <div className="plan-section-header">
                 <span className="plan-section-label" style={{ marginBottom: 0 }}>Workouts</span>
                 {!pausedSession && (
-                  <button className="btn outline btn-sm" onClick={startFreestyle}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    Freestyle
-                  </button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn outline btn-sm" onClick={() => setShowWorkoutPicker(true)}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Workout
+                    </button>
+                    <button className="btn outline btn-sm" onClick={startFreestyle}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Freestyle
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -317,6 +326,12 @@ export function TodayView() {
           }}
         />
       </div>
+
+      <WorkoutPickerModal
+        open={showWorkoutPicker}
+        onClose={() => setShowWorkoutPicker(false)}
+        onPick={workoutId => { setShowWorkoutPicker(false); startFromTemplate(workoutId); }}
+      />
 
       {showAddMeal && (
         <AddMealSheet
@@ -1545,7 +1560,7 @@ function SessionExercisePicker({ open, onClose, onPick }: {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <Modal open={open} onClose={onClose} title="Add Exercise" size="md">
+    <Modal open={open} onClose={onClose} title="Add Exercise" size="full">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <SearchBar value={search} onChange={setSearch} placeholder="Search…" />
         {filtered.length === 0 ? (
@@ -1553,7 +1568,7 @@ function SessionExercisePicker({ open, onClose, onPick }: {
             <p>No exercises found. Import the library from the Library tab.</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '50vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {filtered.map(ex => {
               const iconColor = CATEGORY_COLOR[ex.category] ?? 'var(--fg-mute)';
               return (
@@ -1579,6 +1594,58 @@ function SessionExercisePicker({ open, onClose, onPick }: {
                 </button>
               );
             })}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Workout Picker Modal ────────────────────────────────────────────────────
+
+function WorkoutPickerModal({ open, onClose, onPick }: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (workoutId: string) => void;
+}) {
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (open) getAllWorkouts().then(all => setWorkouts(all.filter(w => !w.archived)));
+  }, [open]);
+
+  const filtered = workouts
+    .filter(w => !search || w.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <Modal open={open} onClose={onClose} title="Start Workout" size="full">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <SearchBar value={search} onChange={setSearch} placeholder="Search workouts…" />
+        {filtered.length === 0 ? (
+          <div className="empty-state" style={{ padding: '32px 0' }}>
+            <p>{search ? `No workouts match "${search}"` : 'No workout templates yet. Create one from the Workouts tab.'}</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {filtered.map(w => (
+              <button
+                key={w.id}
+                className="exercise-picker-row"
+                onClick={() => onPick(w.id)}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, textAlign: 'left' }}>{w.name}</div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--fg-mute)', marginTop: 3, textAlign: 'left', letterSpacing: '0.08em' }}>
+                    {w.groups.length} group{w.groups.length !== 1 ? 's' : ''} · {w.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises
+                  </div>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--fg-mute)" strokeWidth="2">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            ))}
           </div>
         )}
       </div>

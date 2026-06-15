@@ -155,22 +155,3 @@
   padding: 3px 7px;
 }
 
-/* Exercise Picker (inside Modal) */
-.exercise-picker-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 16px 0;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  cursor: pointer;
-  color: var(--fg);
-  font-size: 15px;
-  transition: background 120ms ease;
-}
-
-.exercise-picker-row:hover {
-  background: var(--surface);
-}

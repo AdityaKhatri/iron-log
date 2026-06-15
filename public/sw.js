@@ -1,9 +1,9 @@
-const CACHE = 'rtb-v1';
+const CACHE = 'rtb-v2';
 
 const SHELL = [
-  '/iron-log/',
-  '/iron-log/index.html',
-  '/iron-log/manifest.webmanifest',
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
 ];
 
 // ── Install ───────────────────────────────────────────────────────────────────
@@ -52,8 +52,6 @@ self.addEventListener('fetch', e => {
   }
 
   // Everything else (index.html, manifest, icons, library.csv, …) — network-first.
-  // This ensures a fresh index.html is always served when online, so deploys
-  // are picked up on the next page open without any manual refresh prompt.
   e.respondWith(
     fetch(e.request)
       .then(r => {
@@ -64,7 +62,7 @@ self.addEventListener('fetch', e => {
         caches.match(e.request).then(cached =>
           cached ||
           (e.request.mode === 'navigate'
-            ? caches.match('/iron-log/index.html')
+            ? caches.match('/index.html')
             : new Response('Offline', { status: 503, statusText: 'Service Unavailable' }))
         )
       )

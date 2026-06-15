@@ -18,7 +18,7 @@ export function Topbar({ title, right, onBack }: TopbarProps) {
           </svg>
         </button>
       ) : (
-        <LogoMark size={20} />
+        <LogoMark size={28} />
       )}
       <span className="crumb">{title}</span>
       {right}

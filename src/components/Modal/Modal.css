@@ -24,7 +24,13 @@
 .modal-sheet--sm  { max-width: 400px; border-radius: 4px; margin: auto; }
 .modal-sheet--md  { max-width: 560px; }
 .modal-sheet--lg  { max-width: 720px; }
-.modal-sheet--full { max-width: 100%; border-radius: 4px 4px 0 0; }
+.modal-sheet--full {
+  max-width: 100%;
+  max-height: 100dvh;
+  height: 100dvh;
+  border-radius: 0;
+  padding-top: var(--safe-top);
+}
 
 .modal-header {
   display: flex;

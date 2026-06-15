@@ -132,16 +132,10 @@ function ConditionalNav({ current, onChange, onMore }: { current: ViewId; onChan
 
 function SplashScreen() {
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg)',
-      zIndex: 300,
-    }}>
-      <LogoFull markSize={50} />
+    <div className="splash">
+      <div className="splash__logo">
+        <LogoFull markSize={50} />
+      </div>
     </div>
   );
 }

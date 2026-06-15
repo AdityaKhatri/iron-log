@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/iron-log/sw.js', { scope: '/iron-log/' });
+    navigator.serviceWorker.register('/sw.js', { scope: '/' });
   });
 }
 
@@ -25,3 +25,11 @@ createRoot(document.getElementById('root')!).render(
     </PreferencesProvider>
   </StrictMode>
 );
+
+// Remove the pre-React HTML splash
+const splash = document.getElementById('splash');
+if (splash) {
+  splash.style.transition = 'opacity 300ms ease';
+  splash.style.opacity = '0';
+  setTimeout(() => splash.remove(), 300);
+}

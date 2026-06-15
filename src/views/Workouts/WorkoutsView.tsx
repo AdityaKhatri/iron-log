@@ -608,7 +608,7 @@ function ExercisePicker({ open, onClose, onPick }: {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <Modal open={open} onClose={onClose} title="Pick Exercise" size="md">
+    <Modal open={open} onClose={onClose} title="Pick Exercise" size="full">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <SearchBar value={search} onChange={setSearch} placeholder="Search exercises…" />
         {filtered.length === 0 ? (
@@ -616,7 +616,7 @@ function ExercisePicker({ open, onClose, onPick }: {
             <p>No exercises found. Import the library from the Library tab.</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '50vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {filtered.map(ex => {
               const iconColor = CATEGORY_COLOR[ex.category] ?? 'var(--fg-mute)';
               return (

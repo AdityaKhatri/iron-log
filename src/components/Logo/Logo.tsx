@@ -11,12 +11,11 @@ interface LogoMarkProps {
 }
 
 export function LogoMark({ size = 24, accent = 'var(--fg)', fg = 'var(--fg-dim)' }: LogoMarkProps) {
-  const w = size;
   return (
     <svg
-      width={w}
-      height={w}
-      viewBox="0 0 200 200"
+      width={size}
+      height={size}
+      viewBox="20 50 160 110"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
