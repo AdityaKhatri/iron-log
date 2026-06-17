@@ -1102,7 +1102,13 @@
   white-space: nowrap;
 }
 
-/* Small protein pill next to kcal total */
+.nutrition-macros-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Small macro pills */
 .nutrition-protein-pill {
   font-family: var(--mono);
   font-size: 11px;
@@ -1116,6 +1122,19 @@
   align-self: center;
 }
 .nutrition-protein-pill.--over { color: #E53E3E; background: rgba(229, 62, 62, 0.1); }
+
+.nutrition-carbs-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #e6994a;
+  letter-spacing: 0.04em;
+  background: rgba(230, 153, 74, 0.1);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  align-self: center;
+}
 
 /* Progress bars */
 .nutrition-bar {
@@ -1198,10 +1217,40 @@
   white-space: nowrap;
 }
 
+.nutrition-category-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nutrition-category-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-mute);
+  padding: 8px 2px 2px;
+}
+
+.nutrition-log-row__macros {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .nutrition-log-row__protein {
   font-family: var(--mono);
   font-size: 10px;
   color: #7c6af5;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.nutrition-log-row__carbs {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #e6994a;
   letter-spacing: 0.04em;
   white-space: nowrap;
 }

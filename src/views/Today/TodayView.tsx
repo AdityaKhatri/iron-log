@@ -16,7 +16,7 @@ import { CategoryIcon, CATEGORY_COLOR, CATEGORY_LABEL } from '../../components/C
 import { today, toISODate, formatDisplayDate, formatDuration } from '../../lib/date';
 import { extractYouTubeId } from '../../lib/youtube';
 import { uid } from '../../lib/ids';
-import type { Session, SessionGroup, SessionBlock, SessionSet, Workout, Exercise, NutritionLog, CalorieGoalLog } from '../../types';
+import type { Session, SessionGroup, SessionBlock, SessionSet, Workout, Exercise, NutritionLog, CalorieGoalLog, MealCategory } from '../../types';
 import './Today.css';
 
 const TODAY = today();
@@ -337,7 +337,7 @@ export function TodayView() {
         <AddMealSheet
           onClose={() => setShowAddMeal(false)}
           onSave={async (entry) => {
-            const log = await addNutritionLog({ ...entry, protein: entry.protein ?? undefined, date: selectedNutritionDate });
+            const log = await addNutritionLog({ ...entry, protein: entry.protein ?? undefined, carbs: entry.carbs ?? undefined, date: selectedNutritionDate });
             setNutritionLogs(prev => [...prev, log].sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
             setShowAddMeal(false);
           }}
@@ -349,7 +349,7 @@ export function TodayView() {
           initialLog={editingLog}
           onClose={() => setEditingLog(null)}
           onSave={async (entry) => {
-            const updated: NutritionLog = { ...editingLog, ...entry, protein: entry.protein ?? undefined };
+            const updated: NutritionLog = { ...editingLog, ...entry, protein: entry.protein ?? undefined, carbs: entry.carbs ?? undefined };
             await updateNutritionLog(updated);
             setNutritionLogs(prev =>
               prev.map(l => l.id === updated.id ? updated : l)
@@ -509,6 +509,14 @@ function DateNav({ date, onChange }: { date: string; onChange: (d: string) => vo
 
 // ─── Nutrition Section ────────────────────────────────────────────────────────
 
+const CATEGORY_DISPLAY: Record<MealCategory, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Snack',
+  misc: 'Misc',
+};
+
 function NutritionSection({ logs, goal, proteinGoalG, onAdd, onEdit, onDelete }: {
   logs: NutritionLog[];
   goal: CalorieGoalLog | null;
@@ -521,11 +529,22 @@ function NutritionSection({ logs, goal, proteinGoalG, onAdd, onEdit, onDelete }:
 
   const totalKcal = logs.reduce((sum, l) => sum + l.kcal, 0);
   const totalProtein = logs.reduce((sum, l) => sum + (l.protein ?? 0), 0);
+  const totalCarbs = logs.reduce((sum, l) => sum + (l.carbs ?? 0), 0);
   const goalKcal = goal?.targetCalories ?? null;
   const kcalProgress = goalKcal ? Math.min(totalKcal / goalKcal, 1) : 0;
-const kcalOver = goalKcal && totalKcal > goalKcal;
+  const kcalOver = goalKcal && totalKcal > goalKcal;
   const proteinOver = proteinGoalG && totalProtein > proteinGoalG;
   const hasProteinData = logs.some(l => l.protein != null);
+  const hasCarbsData = logs.some(l => l.carbs != null);
+
+  const grouped = new Map<MealCategory, NutritionLog[]>();
+  for (const log of logs) {
+    const cat = log.category ?? 'misc';
+    if (!grouped.has(cat)) grouped.set(cat, []);
+    grouped.get(cat)!.push(log);
+  }
+  const categoryOrder: MealCategory[] = ['breakfast', 'lunch', 'dinner', 'snack', 'misc'];
+  const sortedCategories = categoryOrder.filter(c => grouped.has(c));
 
   return (
     <div className="nutrition-section">
@@ -539,16 +558,23 @@ const kcalOver = goalKcal && totalKcal > goalKcal;
         </button>
       </div>
 
-      {/* Stats row */}
+      {/* Stats */}
       <div className="nutrition-stats">
         <div className="nutrition-stat">
           <span className={`nutrition-stat__val${kcalOver ? ' --over' : ''}`}>{totalKcal.toLocaleString()}</span>
           <span className="nutrition-stat__label">{goalKcal ? `/ ${goalKcal.toLocaleString()} kcal` : 'kcal'}</span>
         </div>
-        {hasProteinData && (
-          <span className={`nutrition-protein-pill${proteinOver ? ' --over' : ''}`}>{totalProtein}g protein</span>
-        )}
       </div>
+      {(hasProteinData || hasCarbsData) && (
+        <div className="nutrition-macros-row">
+          {hasProteinData && (
+            <span className={`nutrition-protein-pill${proteinOver ? ' --over' : ''}`}>{totalProtein}g protein</span>
+          )}
+          {hasCarbsData && (
+            <span className="nutrition-carbs-pill">{totalCarbs}g carbs</span>
+          )}
+        </div>
+      )}
 
       {/* Progress bars */}
       {goalKcal && (
@@ -558,66 +584,79 @@ const kcalOver = goalKcal && totalKcal > goalKcal;
         </div>
       )}
 
-      {/* Meal list */}
-      {logs.length > 0 && (
-        <div className="nutrition-log-list">
-          {logs.map(log => (
-            <div
-              key={log.id}
-              className="nutrition-log-row"
-              onClick={() => { setConfirmDeleteId(null); onEdit(log); }}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="nutrition-log-row__info">
-                <span className="nutrition-log-row__name">{log.name}</span>
-                {log.notes && <span className="nutrition-log-row__notes">{log.notes}</span>}
-              </div>
-              <div className="nutrition-log-row__right">
-                <span className="nutrition-log-row__kcal">{log.kcal.toLocaleString()} kcal</span>
-                {log.protein != null && (
-                  <span className="nutrition-log-row__protein">{log.protein}g</span>
+      {/* Meal list grouped by category */}
+      {sortedCategories.map(cat => (
+        <div key={cat} className="nutrition-category-group">
+          <span className="nutrition-category-label">{CATEGORY_DISPLAY[cat]}</span>
+          <div className="nutrition-log-list">
+            {grouped.get(cat)!.map(log => (
+              <div
+                key={log.id}
+                className="nutrition-log-row"
+                onClick={() => { setConfirmDeleteId(null); onEdit(log); }}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="nutrition-log-row__info">
+                  <span className="nutrition-log-row__name">{log.name}</span>
+                  {log.notes && <span className="nutrition-log-row__notes">{log.notes}</span>}
+                </div>
+                <div className="nutrition-log-row__right">
+                  <span className="nutrition-log-row__kcal">{log.kcal.toLocaleString()} kcal</span>
+                  <div className="nutrition-log-row__macros">
+                    {log.protein != null && (
+                      <span className="nutrition-log-row__protein">{log.protein}g P</span>
+                    )}
+                    {log.carbs != null && (
+                      <span className="nutrition-log-row__carbs">{log.carbs}g C</span>
+                    )}
+                  </div>
+                </div>
+                {confirmDeleteId === log.id ? (
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                    <button
+                      className="btn btn-sm"
+                      style={{ background: '#E53E3E', borderColor: '#E53E3E', color: '#fff', padding: '3px 10px' }}
+                      onClick={() => { onDelete(log.id); setConfirmDeleteId(null); }}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      className="btn outline btn-sm"
+                      style={{ padding: '3px 10px' }}
+                      onClick={() => setConfirmDeleteId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="icon-btn"
+                    style={{ width: 24, height: 24, flexShrink: 0 }}
+                    onClick={e => { e.stopPropagation(); setConfirmDeleteId(log.id); }}
+                    aria-label="Delete"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
                 )}
               </div>
-              {confirmDeleteId === log.id ? (
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                  <button
-                    className="btn btn-sm"
-                    style={{ background: '#E53E3E', borderColor: '#E53E3E', color: '#fff', padding: '3px 10px' }}
-                    onClick={() => { onDelete(log.id); setConfirmDeleteId(null); }}
-                  >
-                    Remove
-                  </button>
-                  <button
-                    className="btn outline btn-sm"
-                    style={{ padding: '3px 10px' }}
-                    onClick={() => setConfirmDeleteId(null)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="icon-btn"
-                  style={{ width: 24, height: 24, flexShrink: 0 }}
-                  onClick={e => { e.stopPropagation(); setConfirmDeleteId(log.id); }}
-                  aria-label="Delete"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
 
 // ─── Add Meal Sheet ───────────────────────────────────────────────────────────
 
-const MEAL_CHIPS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+const MEAL_CATEGORIES = [
+  { value: 'breakfast' as const, label: 'Breakfast' },
+  { value: 'lunch' as const, label: 'Lunch' },
+  { value: 'dinner' as const, label: 'Dinner' },
+  { value: 'snack' as const, label: 'Snack' },
+];
 
 const GEMINI_PROXY_URL = import.meta.env.VITE_GEMINI_PROXY_URL as string;
 
@@ -643,7 +682,7 @@ async function callGemini(prompt: string): Promise<string> {
 const AI_PROMPT = (desc: string) =>
   `You are a nutrition estimator. The user will describe food they ate.
 Return ONLY valid JSON — no markdown, no explanation, nothing else — in this exact format:
-{"title":"brief meal name","total_cal":number,"total_protein":number,"status":"success"}
+{"title":"brief meal name","total_cal":number,"total_protein":number,"total_carbs":number,"status":"success"}
 Use status "failure" only if the description is completely too vague to estimate even roughly (e.g. just "food" or "stuff").
 For anything with recognisable food items, always return "success" with your best estimate.
 
@@ -653,13 +692,15 @@ type AiState = 'idle' | 'loading' | 'success' | 'error';
 
 function AddMealSheet({ onClose, onSave, initialLog }: {
   onClose: () => void;
-  onSave: (entry: { name: string; kcal: number; protein: number | null; notes: string; aiDescription: string }) => void;
+  onSave: (entry: { name: string; category: MealCategory; kcal: number; protein: number | null; carbs: number | null; notes: string; aiDescription: string }) => void;
   initialLog?: NutritionLog;
 }) {
   const [description, setDescription] = useState(initialLog?.aiDescription ?? '');
   const [name, setName] = useState(initialLog?.name ?? '');
+  const [category, setCategory] = useState<MealCategory>(initialLog?.category ?? 'misc');
   const [kcal, setKcal] = useState(initialLog?.kcal ? String(initialLog.kcal) : '');
   const [protein, setProtein] = useState<number | null>(initialLog?.protein ?? null);
+  const [carbs, setCarbs] = useState<number | null>(initialLog?.carbs ?? null);
   const [notes, setNotes] = useState(initialLog?.notes ?? '');
   const [aiState, setAiState] = useState<AiState>('idle');
   const [aiError, setAiError] = useState('');
@@ -675,7 +716,7 @@ function AddMealSheet({ onClose, onSave, initialLog }: {
       const match = text.match(/\{[\s\S]*\}/);
       if (!match) throw new Error('No JSON in response.');
       const json = JSON.parse(match[0]) as {
-        title?: string; total_cal?: number; total_protein?: number; status?: string;
+        title?: string; total_cal?: number; total_protein?: number; total_carbs?: number; status?: string;
       };
       if (json.status === 'failure') {
         setAiState('error');
@@ -685,6 +726,7 @@ function AddMealSheet({ onClose, onSave, initialLog }: {
       setName(json.title ?? description.trim());
       setKcal(String(Math.round(json.total_cal ?? 0)));
       setProtein(json.total_protein != null ? Math.round(json.total_protein) : null);
+      setCarbs(json.total_carbs != null ? Math.round(json.total_carbs) : null);
       setAiState('success');
     } catch (e) {
       setAiState('error');
@@ -704,15 +746,15 @@ function AddMealSheet({ onClose, onSave, initialLog }: {
           </button>
         </div>
 
-        {/* Quick chips */}
+        {/* Category chips */}
         <div className="meal-chips">
-          {MEAL_CHIPS.map(chip => (
+          {MEAL_CATEGORIES.map(cat => (
             <button
-              key={chip}
-              className={`meal-chip${name === chip ? ' active' : ''}`}
-              onClick={() => setName(name === chip ? '' : chip)}
+              key={cat.value}
+              className={`meal-chip${category === cat.value ? ' active' : ''}`}
+              onClick={() => setCategory(category === cat.value ? 'misc' : cat.value)}
             >
-              {chip}
+              {cat.label}
             </button>
           ))}
         </div>
@@ -782,12 +824,22 @@ function AddMealSheet({ onClose, onSave, initialLog }: {
             className="input meal-kcal-input"
             type="number"
             inputMode="numeric"
-            placeholder="0"
+            placeholder="–"
             value={protein ?? ''}
             onChange={e => setProtein(e.target.value ? Math.round(Number(e.target.value)) : null)}
-            style={{ maxWidth: 64 }}
+            style={{ maxWidth: 56 }}
           />
           <span className="meal-kcal-unit">g prot</span>
+          <input
+            className="input meal-kcal-input"
+            type="number"
+            inputMode="numeric"
+            placeholder="–"
+            value={carbs ?? ''}
+            onChange={e => setCarbs(e.target.value ? Math.round(Number(e.target.value)) : null)}
+            style={{ maxWidth: 56 }}
+          />
+          <span className="meal-kcal-unit">g carb</span>
         </div>
 
         {/* Notes */}
@@ -806,7 +858,7 @@ function AddMealSheet({ onClose, onSave, initialLog }: {
           <button
             className="btn primary btn-full"
             disabled={!canSave}
-            onClick={() => onSave({ name: name.trim(), kcal: Math.round(Number(kcal)), protein, notes, aiDescription: description.trim() })}
+            onClick={() => onSave({ name: name.trim(), category, kcal: Math.round(Number(kcal)), protein, carbs, notes, aiDescription: description.trim() })}
           >
             {initialLog ? 'Save Changes' : 'Add Meal'}
           </button>

@@ -313,3 +313,73 @@ ex_futsal,Futsal,full-body,legs,other,cardio,,min
 ex_soccer,Soccer,full-body,legs,other,cardio,,min
 ex_cycling_outdoor,Outdoor Cycling,legs,full-body,other,cardio,,min
 ex_hike,Hike,legs,full-body,other,cardio,,min
+ex_outdoor_walk,Outdoor Walk,legs,full-body,bodyweight,cardio,,min
+ex_trail_run,Trail Run,legs,full-body,bodyweight,cardio,,min
+ex_kb_goblet_squat,Kettlebell Goblet Squat,legs,"glutes,core",kettlebell,muscle,,kg
+ex_kb_front_squat,Kettlebell Front Squat,legs,"glutes,core",kettlebell,muscle,,kg
+ex_kb_halo,Kettlebell Halo,shoulders,core,kettlebell,muscle,,kg
+ex_kb_windmill,Kettlebell Windmill,core,"shoulders,legs",kettlebell,muscle,,kg
+ex_kb_russian_twist,Kettlebell Russian Twist,core,,kettlebell,muscle,,kg
+ex_kb_overhead_press,Kettlebell Overhead Press,shoulders,triceps,kettlebell,muscle,,kg
+ex_kb_push_press,Kettlebell Push Press,shoulders,"triceps,legs",kettlebell,muscle,,kg
+ex_kb_clean_and_press,Kettlebell Clean and Press,full-body,"legs,back,shoulders",kettlebell,muscle,,kg
+ex_kb_lunge,Kettlebell Lunge,legs,glutes,kettlebell,muscle,,kg
+ex_kb_romanian_deadlift,Kettlebell Romanian Deadlift,legs,"glutes,back",kettlebell,muscle,,kg
+ex_kb_renegade_row,Kettlebell Renegade Row,back,"core,shoulders",kettlebell,muscle,,kg
+ex_kb_single_arm_row,Kettlebell Single Arm Row,back,biceps,kettlebell,muscle,,kg
+ex_kb_figure_8,Kettlebell Figure 8,core,legs,kettlebell,muscle,,kg
+ex_kb_high_pull,Kettlebell High Pull,back,"shoulders,legs",kettlebell,muscle,,kg
+ex_kb_floor_press,Kettlebell Floor Press,chest,"triceps,shoulders",kettlebell,muscle,,kg
+ex_kb_bottoms_up_press,Kettlebell Bottoms-Up Press,shoulders,"forearms,core",kettlebell,muscle,,kg
+ex_sumo_squat,Sumo Squat,legs,glutes,barbell,muscle,,kg
+ex_yoga_mountain_pose,Mountain Pose (Tadasana),full-body,"legs,core",bodyweight,yoga,,sec
+ex_yoga_tree_pose,Tree Pose (Vrksasana),legs,core,bodyweight,yoga,,sec
+ex_yoga_warrior_1,Warrior I (Virabhadrasana I),legs,"core,shoulders",bodyweight,yoga,,sec
+ex_yoga_warrior_2,Warrior II (Virabhadrasana II),legs,"core,shoulders",bodyweight,yoga,,sec
+ex_yoga_warrior_3,Warrior III (Virabhadrasana III),legs,"core,back",bodyweight,yoga,,sec
+ex_yoga_triangle_pose,Triangle Pose (Trikonasana),legs,"core,back",bodyweight,yoga,,sec
+ex_yoga_extended_side_angle,Extended Side Angle Pose (Utthita Parsvakonasana),legs,"core,shoulders",bodyweight,yoga,,sec
+ex_yoga_standing_forward_bend,Standing Forward Bend (Uttanasana),legs,back,bodyweight,yoga,,sec
+ex_yoga_chair_pose,Chair Pose (Utkatasana),legs,"glutes,core",bodyweight,yoga,,sec
+ex_yoga_eagle_pose,Eagle Pose (Garudasana),legs,"shoulders,core",bodyweight,yoga,,sec
+ex_yoga_half_moon_pose,Half Moon Pose (Ardha Chandrasana),legs,"core,glutes",bodyweight,yoga,,sec
+ex_yoga_garland_pose,Garland Pose (Malasana),legs,"glutes,core",bodyweight,yoga,,sec
+ex_yoga_wide_legged_fwd_bend,Wide-Legged Forward Bend (Prasarita Padottanasana),legs,back,bodyweight,yoga,,sec
+ex_yoga_pyramid_pose,Pyramid Pose (Parsvottanasana),legs,back,bodyweight,yoga,,sec
+ex_yoga_revolved_triangle,Revolved Triangle Pose (Parivrtta Trikonasana),legs,"core,back",bodyweight,yoga,,sec
+ex_yoga_standing_split,Standing Split (Urdhva Prasarita Eka Padasana),legs,core,bodyweight,yoga,,sec
+ex_yoga_dancers_pose,Dancer's Pose (Natarajasana),legs,"core,shoulders",bodyweight,yoga,,sec
+ex_yoga_crescent_lunge,Crescent Lunge (Anjaneyasana),legs,"glutes,core",bodyweight,yoga,,sec
+ex_yoga_lizard_pose,Lizard Pose (Utthan Pristhasana),legs,glutes,bodyweight,yoga,,sec
+ex_yoga_goddess_pose,Goddess Pose (Utkata Konasana),legs,"glutes,core",bodyweight,yoga,,sec
+ex_yoga_easy_pose,Easy Pose (Sukhasana),full-body,core,bodyweight,yoga,,sec
+ex_yoga_lotus_pose,Lotus Pose (Padmasana),legs,core,bodyweight,yoga,,sec
+ex_yoga_seated_forward_bend,Seated Forward Bend (Paschimottanasana),legs,back,bodyweight,yoga,,sec
+ex_yoga_bound_angle_pose,Bound Angle Pose (Baddha Konasana),legs,core,bodyweight,yoga,,sec
+ex_yoga_head_to_knee_pose,Head-to-Knee Pose (Janu Sirsasana),legs,back,bodyweight,yoga,,sec
+ex_yoga_half_lord_of_fishes,Half Lord of the Fishes Pose (Ardha Matsyendrasana),back,core,bodyweight,yoga,,sec
+ex_yoga_cow_face_pose,Cow Face Pose (Gomukhasana),shoulders,legs,bodyweight,yoga,,sec
+ex_yoga_seated_wide_angle,Seated Wide-Angle Pose (Upavistha Konasana),legs,back,bodyweight,yoga,,sec
+ex_yoga_heron_pose,Heron Pose (Krounchasana),legs,core,bodyweight,yoga,,sec
+ex_yoga_hero_pose,Hero Pose (Virasana),legs,,bodyweight,yoga,,sec
+ex_yoga_camel_pose,Camel Pose (Ustrasana),back,"shoulders,core",bodyweight,yoga,,sec
+ex_yoga_bow_pose,Bow Pose (Dhanurasana),back,"legs,shoulders",bodyweight,yoga,,sec
+ex_yoga_bridge_pose,Bridge Pose (Setu Bandhasana),glutes,"back,legs",bodyweight,yoga,,sec
+ex_yoga_fish_pose,Fish Pose (Matsyasana),back,"chest,shoulders",bodyweight,yoga,,sec
+ex_yoga_wheel_pose,Wheel Pose (Urdhva Dhanurasana),back,"shoulders,legs",bodyweight,yoga,,sec
+ex_yoga_locust_pose,Locust Pose (Salabhasana),back,"glutes,shoulders",bodyweight,yoga,,sec
+ex_yoga_crow_pose,Crow Pose (Bakasana),core,"arms,shoulders",bodyweight,yoga,,sec
+ex_yoga_side_crow_pose,Side Crow Pose (Parsva Bakasana),core,"arms,shoulders",bodyweight,yoga,,sec
+ex_yoga_peacock_pose,Peacock Pose (Mayurasana),core,"arms,shoulders",bodyweight,yoga,,sec
+ex_yoga_firefly_pose,Firefly Pose (Tittibhasana),core,"legs,arms",bodyweight,yoga,,sec
+ex_yoga_eight_angle_pose,Eight-Angle Pose (Astavakrasana),core,"arms,shoulders",bodyweight,yoga,,sec
+ex_yoga_downward_facing_dog,Downward-Facing Dog (Adho Mukha Svanasana),full-body,"shoulders,back,legs",bodyweight,yoga,,sec
+ex_yoga_upward_facing_dog,Upward-Facing Dog (Urdhva Mukha Svanasana),back,"chest,shoulders",bodyweight,yoga,,sec
+ex_yoga_shoulder_stand,Shoulder Stand (Salamba Sarvangasana),shoulders,"core,back",bodyweight,yoga,,sec
+ex_yoga_headstand,Headstand (Sirsasana),shoulders,"core,back",bodyweight,yoga,,sec
+ex_yoga_plow_pose,Plow Pose (Halasana),back,"core,legs",bodyweight,yoga,,sec
+ex_yoga_legs_up_wall,Legs-Up-The-Wall Pose (Viparita Karani),legs,back,bodyweight,yoga,,sec
+ex_yoga_boat_pose,Boat Pose (Navasana),core,legs,bodyweight,yoga,,sec
+ex_yoga_reclining_big_toe,Reclining Big Toe Pose (Supta Padangusthasana),legs,back,bodyweight,yoga,,sec
+ex_yoga_corpse_pose,Corpse Pose (Savasana),full-body,,bodyweight,yoga,,min
+ex_meditation,Meditation,full-body,,bodyweight,meditation,,min

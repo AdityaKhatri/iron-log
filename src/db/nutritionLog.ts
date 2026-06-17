@@ -1,15 +1,22 @@
 import { getDb, idbGetAll, idbGetByIndex, idbPut, idbDelete } from './connection';
 import type { NutritionLog } from '../types';
 
+function backfillLog(log: NutritionLog): NutritionLog {
+  if (log.category === undefined) (log as Record<string, unknown>).category = 'misc';
+  if (log.carbs === undefined) (log as Record<string, unknown>).carbs = 0;
+  return log;
+}
+
 export async function getAllNutritionLogs(): Promise<NutritionLog[]> {
   const db = await getDb();
   const all = await idbGetAll<NutritionLog>(db, 'nutritionLog');
-  return all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return all.map(backfillLog).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 export async function getNutritionLogsByDate(date: string): Promise<NutritionLog[]> {
   const db = await getDb();
-  return idbGetByIndex<NutritionLog>(db, 'nutritionLog', 'date', date);
+  const logs = await idbGetByIndex<NutritionLog>(db, 'nutritionLog', 'date', date);
+  return logs.map(backfillLog);
 }
 
 export async function addNutritionLog(entry: Omit<NutritionLog, 'id' | 'createdAt'>): Promise<NutritionLog> {

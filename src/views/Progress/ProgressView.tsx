@@ -384,9 +384,8 @@ function BodyTab({ bodyweightEntries }: { bodyweightEntries: Bodyweight[] }) {
 // ─── Tab: Nutrition ───────────────────────────────────────────────────────────
 
 function NutritionTab({ logs }: { logs: NutritionLog[] }) {
-  // Build last 14 days of daily totals
   const today = new Date();
-  const days: { date: string; label: string; kcal: number; protein: number }[] = [];
+  const days: { date: string; label: string; kcal: number; protein: number; carbs: number }[] = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
@@ -395,21 +394,27 @@ function NutritionTab({ logs }: { logs: NutritionLog[] }) {
     const dayLogs = logs.filter(l => l.date === iso);
     const kcal = dayLogs.reduce((s, l) => s + l.kcal, 0);
     const protein = dayLogs.reduce((s, l) => s + (l.protein ?? 0), 0);
-    days.push({ date: iso, label, kcal, protein });
+    const carbs = dayLogs.reduce((s, l) => s + (l.carbs ?? 0), 0);
+    days.push({ date: iso, label, kcal, protein, carbs });
   }
 
   const daysWithKcal = days.filter(d => d.kcal > 0);
   const daysWithProtein = days.filter(d => d.protein > 0);
+  const daysWithCarbs = days.filter(d => d.carbs > 0);
   const avgKcal = daysWithKcal.length > 0
     ? Math.round(daysWithKcal.reduce((s, d) => s + d.kcal, 0) / daysWithKcal.length)
     : 0;
   const avgProtein = daysWithProtein.length > 0
     ? Math.round(daysWithProtein.reduce((s, d) => s + d.protein, 0) / daysWithProtein.length)
     : 0;
+  const avgCarbs = daysWithCarbs.length > 0
+    ? Math.round(daysWithCarbs.reduce((s, d) => s + d.carbs, 0) / daysWithCarbs.length)
+    : 0;
   const hasProtein = daysWithProtein.length > 0;
+  const hasCarbs = daysWithCarbs.length > 0;
 
-  // Protein line chart: only days that have protein data logged
   const proteinPoints = daysWithProtein.map(d => ({ label: d.label, value: d.protein }));
+  const carbsPoints = daysWithCarbs.map(d => ({ label: d.label, value: d.carbs }));
 
   if (logs.length === 0) {
     return (
@@ -433,6 +438,12 @@ function NutritionTab({ logs }: { logs: NutritionLog[] }) {
               <span className="prog-bw-stat-label">Avg protein/day</span>
             </div>
           )}
+          {hasCarbs && (
+            <div className="prog-bw-stat">
+              <span className="prog-bw-stat-val">{avgCarbs}g</span>
+              <span className="prog-bw-stat-label">Avg carbs/day</span>
+            </div>
+          )}
           <div className="prog-bw-stat">
             <span className="prog-bw-stat-val">{daysWithKcal.length}</span>
             <span className="prog-bw-stat-label">Days logged</span>
@@ -450,6 +461,12 @@ function NutritionTab({ logs }: { logs: NutritionLog[] }) {
         <div className="prog-section">
           <div className="prog-chart-label">Daily protein (g) — logged days</div>
           <LineChart points={proteinPoints} color="#7c6af5" />
+        </div>
+      )}
+      {hasCarbs && (
+        <div className="prog-section">
+          <div className="prog-chart-label">Daily carbs (g) — logged days</div>
+          <LineChart points={carbsPoints} color="#e6994a" />
         </div>
       )}
     </div>

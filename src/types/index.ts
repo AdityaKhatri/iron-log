@@ -145,12 +145,16 @@ export interface ProfileRecord {
 }
 
 // ─── Nutrition ────────────────────────────────────────────────────────────────
+export type MealCategory = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'misc';
+
 export interface NutritionLog {
   id: string;              // 'nl_<timestamp>'
   date: string;            // "YYYY-MM-DD"
   name: string;            // "Dal Bhat"
+  category: MealCategory;
   kcal: number;
   protein?: number;        // grams
+  carbs?: number;          // grams
   notes: string;
   aiDescription?: string;  // raw description entered for AI estimation
   createdAt: string;       // ISO datetime

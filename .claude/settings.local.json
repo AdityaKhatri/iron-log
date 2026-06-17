@@ -25,7 +25,8 @@
       "Bash(npx eslint:*)",
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm add:*)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(xargs ls -la)"
     ]
   }
 }
