@@ -67,7 +67,18 @@ export const THEME_PAIRS: { pairName: string; dark: ThemeInfo; light: ThemeInfo 
 ];
 
 const STORAGE_KEY = 'rtb_theme';
+const MODE_KEY = 'rtb_theme_mode';
 const LEGACY_KEY = 'iron_log_theme_v2';
+
+export type ThemeMode = 'dark' | 'light' | 'auto';
+
+export function getThemeMode(): ThemeMode {
+  return (localStorage.getItem(MODE_KEY) as ThemeMode) ?? 'auto';
+}
+
+export function setThemeMode(mode: ThemeMode) {
+  localStorage.setItem(MODE_KEY, mode);
+}
 
 export function getTheme(): ThemeKey {
   const val = localStorage.getItem(STORAGE_KEY)
@@ -76,17 +87,49 @@ export function getTheme(): ThemeKey {
     localStorage.setItem(STORAGE_KEY, val);
     localStorage.removeItem(LEGACY_KEY);
   }
-  return (val as ThemeKey) ?? 'iron';
+  return (val as ThemeKey) ?? 'onyx';
+}
+
+function findPair(key: ThemeKey) {
+  return THEME_PAIRS.find(p => p.dark.key === key || p.light.key === key);
+}
+
+function isDark(key: ThemeKey): boolean {
+  return THEME_PAIRS.some(p => p.dark.key === key);
+}
+
+function resolveTheme(): ThemeKey {
+  const saved = getTheme();
+  const mode = getThemeMode();
+  if (mode !== 'auto') {
+    const pair = findPair(saved);
+    if (pair) {
+      const wantDark = mode === 'dark';
+      const currentlyDark = isDark(saved);
+      if (wantDark !== currentlyDark) return wantDark ? pair.dark.key : pair.light.key;
+    }
+    return saved;
+  }
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const pair = findPair(saved);
+  if (pair) return systemDark ? pair.dark.key : pair.light.key;
+  return saved;
 }
 
 export function applyTheme(key?: ThemeKey) {
-  const theme = key ?? getTheme();
+  const theme = key !== undefined ? key : resolveTheme();
   const html = document.documentElement;
-  // Remove any existing theme- classes and old data-theme attribute
   Array.from(html.classList)
     .filter(c => c.startsWith('theme-'))
     .forEach(c => html.classList.remove(c));
   html.removeAttribute('data-theme');
   html.classList.add(`theme-${theme}`);
   if (key !== undefined) localStorage.setItem(STORAGE_KEY, key);
+}
+
+export function listenForSystemThemeChange(callback: () => void): () => void {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const handler = () => { if (getThemeMode() === 'auto') callback(); };
+  mq.addEventListener('change', handler);
+  return () => mq.removeEventListener('change', handler);
 }

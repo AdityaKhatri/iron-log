@@ -3,8 +3,8 @@ import { getProfile, setProfile } from '../../db/profile';
 import { getAllBodyweight, putBodyweight } from '../../db/bodyweight';
 import { addCalorieGoal, getActiveGoalForDate } from '../../db/calorieGoalLog';
 import { Topbar } from '../../components/Topbar/Topbar';
-import { THEME_PAIRS, applyTheme, getTheme } from '../../lib/theme';
-import type { ThemeKey } from '../../lib/theme';
+import { THEME_PAIRS, applyTheme, getTheme, getThemeMode, setThemeMode, listenForSystemThemeChange } from '../../lib/theme';
+import type { ThemeKey, ThemeMode } from '../../lib/theme';
 import { today } from '../../lib/date';
 import { useSyncContext } from '../../context/SyncContext';
 import { exportToBackup, mergeFromBackup } from '../../lib/sync';
@@ -371,19 +371,46 @@ function SettingsSection() {
   const [importError, setImportError] = useState<string | null>(null);
   const [wipePending, setWipePending] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>(getTheme);
+  const [mode, setMode] = useState<ThemeMode>(getThemeMode);
   const driveConfigured = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined);
 
-  const isDarkTheme = THEME_PAIRS.some(p => p.dark.key === currentTheme);
+  const effectiveDark = mode === 'auto'
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : mode === 'dark';
+  const isDarkTheme = effectiveDark;
+
+  useEffect(() => {
+    return listenForSystemThemeChange(() => {
+      applyTheme();
+      setCurrentTheme(getTheme());
+    });
+  }, []);
+
+  function handleModeChange(m: ThemeMode) {
+    setThemeMode(m);
+    setMode(m);
+    if (m === 'auto') {
+      applyTheme();
+    } else {
+      const pair = THEME_PAIRS.find(p => p.dark.key === currentTheme || p.light.key === currentTheme);
+      if (pair) {
+        const key = m === 'dark' ? pair.dark.key : pair.light.key;
+        applyTheme(key);
+        setCurrentTheme(key);
+      }
+    }
+  }
 
   function handleThemeSelect(key: ThemeKey) {
     applyTheme(key);
     setCurrentTheme(key);
-  }
-
-  function toggleDarkLight() {
-    for (const pair of THEME_PAIRS) {
-      if (pair.dark.key === currentTheme) { handleThemeSelect(pair.light.key); return; }
-      if (pair.light.key === currentTheme) { handleThemeSelect(pair.dark.key); return; }
+    const pair = THEME_PAIRS.find(p => p.dark.key === key || p.light.key === key);
+    if (pair && mode !== 'auto') {
+      const isDark = pair.dark.key === key;
+      if ((isDark && mode === 'light') || (!isDark && mode === 'dark')) {
+        setThemeMode(isDark ? 'dark' : 'light');
+        setMode(isDark ? 'dark' : 'light');
+      }
     }
   }
 
@@ -544,22 +571,23 @@ function SettingsSection() {
         <div className="profile-field last">
           <span className="profile-field-label">Mode</span>
           <div className="profile-unit-toggle">
-            <button className={`profile-unit-btn${isDarkTheme ? ' active' : ''}`} onClick={() => !isDarkTheme && toggleDarkLight()}>Dark</button>
-            <button className={`profile-unit-btn${!isDarkTheme ? ' active' : ''}`} onClick={() => isDarkTheme && toggleDarkLight()}>Light</button>
+            <button className={`profile-unit-btn${mode === 'dark' ? ' active' : ''}`} onClick={() => handleModeChange('dark')}>Dark</button>
+            <button className={`profile-unit-btn${mode === 'auto' ? ' active' : ''}`} onClick={() => handleModeChange('auto')}>Auto</button>
+            <button className={`profile-unit-btn${mode === 'light' ? ' active' : ''}`} onClick={() => handleModeChange('light')}>Light</button>
           </div>
         </div>
       </div>
       <div className="theme-list" style={{ marginBottom: 32 }}>
         {THEME_PAIRS.map(pair => {
-          const t = isDarkTheme ? pair.dark : pair.light;
-          const isActive = currentTheme === t.key;
+          const t = effectiveDark ? pair.dark : pair.light;
+          const isActive = currentTheme === pair.dark.key || currentTheme === pair.light.key;
           return (
             <button
               key={t.key}
               className={`theme-list-row${isActive ? ' theme-list-row--active' : ''}`}
               onClick={() => handleThemeSelect(t.key)}
             >
-              <span className="theme-list-row__name">{pair.pairName.split(' × ')[isDarkTheme ? 0 : 1]}</span>
+              <span className="theme-list-row__name">{pair.pairName.split(' × ')[effectiveDark ? 0 : 1]}</span>
               <div className="theme-list-row__palette">
                 <span className="theme-pal-dot" style={{ background: t.bg }} />
                 <span className="theme-pal-dot" style={{ background: t.surface }} />

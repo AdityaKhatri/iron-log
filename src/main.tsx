@@ -8,8 +8,9 @@ if ('serviceWorker' in navigator) {
 }
 
 // Apply saved theme before first render (avoids flash)
-import { applyTheme } from './lib/theme';
+import { applyTheme, listenForSystemThemeChange } from './lib/theme';
 applyTheme();
+listenForSystemThemeChange(() => applyTheme());
 
 import { ActiveSessionProvider } from './context/ActiveSessionContext';
 import { PreferencesProvider } from './context/PreferencesContext';

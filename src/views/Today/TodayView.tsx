@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useActiveSession } from '../../context/ActiveSessionContext';
 import { usePlanDay } from '../../hooks/usePlanDay';
 import { LogoMark } from '../../components/Logo/Logo';
-import { getAllSessions } from '../../db/sessions';
+import { getAllSessions, deleteSession } from '../../db/sessions';
 import { getWorkout, getAllWorkouts } from '../../db/workouts';
 import { getSessionsByDate } from '../../db/sessions';
 import { getAllExercises } from '../../db/exercises';
@@ -182,6 +182,11 @@ export function TodayView() {
         session={viewingSession}
         onBack={() => setViewingSession(null)}
         onEdit={() => { setViewingSession(null); resumeSession(viewingSession); }}
+        onDelete={async () => {
+          await deleteSession(viewingSession.id);
+          setDoneSessions(prev => { const m = new Map(prev); m.delete(viewingSession.id); return m; });
+          setViewingSession(null);
+        }}
       />
     );
   }
@@ -1707,20 +1712,36 @@ function WorkoutPickerModal({ open, onClose, onPick }: {
 
 // ─── Session Detail Page (read-only, full screen) ────────────────────────────
 
-function SessionDetailPage({ session, onBack, onEdit }: {
+function SessionDetailPage({ session, onBack, onEdit, onDelete }: {
   session: Session;
   onBack: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   return (
     <div className="workout-editor">
       <Topbar
         title={session.workoutName}
         onBack={onBack}
         right={
-          <button className="btn outline btn-sm" onClick={onEdit}>Edit</button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn outline btn-sm" onClick={onEdit}>Edit</button>
+            <button className="btn outline btn-sm" style={{ color: '#E53E3E', borderColor: '#E53E3E' }} onClick={() => setConfirmDelete(true)}>Delete</button>
+          </div>
         }
       />
+
+      {confirmDelete && (
+        <div className="sess-delete-confirm">
+          <span>Delete this session? This can't be undone.</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-sm" style={{ background: '#E53E3E', borderColor: '#E53E3E', color: '#fff' }} onClick={onDelete}>Delete</button>
+            <button className="btn outline btn-sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Session meta row */}
       <div className="sess-detail-meta">

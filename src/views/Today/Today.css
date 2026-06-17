@@ -1038,6 +1038,19 @@
   border-top: 1px solid var(--line);
 }
 
+/* ─── Session delete confirm ──────────────────────────────────────────────── */
+.sess-delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px;
+  background: rgba(229, 62, 62, 0.08);
+  border-bottom: 1px solid rgba(229, 62, 62, 0.2);
+  font-size: 13px;
+  color: var(--fg-dim);
+}
+
 /* ─── Nutrition section ───────────────────────────────────────────────────── */
 .nutrition-section {
   padding: 0 20px 24px;
