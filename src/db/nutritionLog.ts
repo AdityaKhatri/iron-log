@@ -2,8 +2,8 @@ import { getDb, idbGetAll, idbGetByIndex, idbPut, idbDelete } from './connection
 import type { NutritionLog } from '../types';
 
 function backfillLog(log: NutritionLog): NutritionLog {
-  if (log.category === undefined) (log as Record<string, unknown>).category = 'misc';
-  if (log.carbs === undefined) (log as Record<string, unknown>).carbs = 0;
+  if (log.category === undefined) (log as unknown as Record<string, unknown>).category = 'misc';
+  if (log.carbs === undefined) (log as unknown as Record<string, unknown>).carbs = 0;
   return log;
 }
 

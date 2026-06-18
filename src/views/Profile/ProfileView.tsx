@@ -377,7 +377,6 @@ function SettingsSection() {
   const effectiveDark = mode === 'auto'
     ? window.matchMedia('(prefers-color-scheme: dark)').matches
     : mode === 'dark';
-  const isDarkTheme = effectiveDark;
 
   useEffect(() => {
     return listenForSystemThemeChange(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAllWorkouts, putWorkout, deleteWorkout } from '../../db/workouts';
 import { getAllExercises } from '../../db/exercises';
 import { getAllSessions } from '../../db/sessions';
@@ -64,13 +64,13 @@ export function WorkoutsView() {
     return list.filter(w => w.name.toLowerCase().includes(q));
   }, [allWorkouts, search]);
 
-  async function handleArchive(id: string) {
+  const handleArchive = useCallback(async (id: string) => {
     const w = allWorkouts.find(x => x.id === id);
     if (!w) return;
     const updated = { ...w, archived: !w.archived, updatedAt: Date.now() };
     await putWorkout(updated);
     setAllWorkouts(prev => prev.map(x => x.id === id ? updated : x));
-  }
+  }, [allWorkouts]);
 
   async function handleDelete(id: string) {
     await deleteWorkout(id);
