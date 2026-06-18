@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAllPlanDays } from '../../hooks/usePlanDay';
 import { putPlanDay, deletePlanDay } from '../../db/plan';
-import { getAllWorkouts } from '../../db/workouts';
+import { getAllWorkouts, putWorkout } from '../../db/workouts';
 import { getAllSessions } from '../../db/sessions';
 import { getAllExercises } from '../../db/exercises';
 import { Modal } from '../../components/Modal/Modal';
+import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { Topbar } from '../../components/Topbar/Topbar';
+import { WorkoutEditor } from '../Workouts/WorkoutsView';
+import { AIImportSheet } from '../../components/AIImportSheet/AIImportSheet';
 import { getDaysInMonth, getFirstDayOfMonth, toISODate, formatDisplayDate, formatDuration } from '../../lib/date';
 import { extractYouTubeId } from '../../lib/youtube';
+import { uid } from '../../lib/ids';
 import type { Workout, PlanDay, Session, Exercise } from '../../types';
 import './Plan.css';
 
@@ -21,8 +25,12 @@ export function PlanView() {
   const [month, setMonth] = useState(now.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
   const [tab, setTab] = useState<PlanTab>('calendar');
   const [viewingWorkout, setViewingWorkout] = useState<Workout | null>(null);
+  const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
+  const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
+  const [aiImporting, setAiImporting] = useState(false);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const { days, reload } = useAllPlanDays();
@@ -80,6 +88,33 @@ export function PlanView() {
     setPickerOpen(false);
   }
 
+  async function createNewWorkout() {
+    const w: Workout = {
+      id: uid('w'),
+      name: 'New Workout',
+      notes: '',
+      groups: [{
+        id: uid('g'),
+        name: 'Main',
+        groupType: 'main',
+        blocks: [],
+      }],
+      archived: false,
+      updatedAt: Date.now(),
+    };
+    await putWorkout(w);
+    setWorkouts(prev => [...prev, w]);
+    setPickerOpen(false);
+    setEditingWorkout(w);
+  }
+
+  async function saveEditingWorkout(w: Workout) {
+    const updated = { ...w, updatedAt: Date.now() };
+    await putWorkout(updated);
+    setWorkouts(prev => prev.map(x => x.id === updated.id ? updated : x));
+    setEditingWorkout(updated);
+  }
+
   async function removeWorkoutFromDay(date: string, workoutId: string) {
     const existing = days.get(date);
     if (!existing) return;
@@ -120,6 +155,199 @@ export function PlanView() {
       if (s.finishedAt && s.workoutId) doneIds.add(s.workoutId);
     }
     return doneIds;
+  }
+
+  if (editingWorkout) {
+    return (
+      <WorkoutEditor
+        workout={editingWorkout}
+        onSave={saveEditingWorkout}
+        onBack={() => { setEditingWorkout(null); setPickerOpen(true); }}
+        onDiscard={() => setEditingWorkout(null)}
+      />
+    );
+  }
+
+  if (selectedDate) {
+    const planDay = days.get(selectedDate);
+    const doneIds = doneWorkoutIdsForDate(selectedDate);
+    const daySessions = sessionsByDate.get(selectedDate) ?? [];
+    const hasPlanned = planDay && planDay.workouts.length > 0;
+    const unplannedSessions = daySessions.filter(s => s.unplanned && s.finishedAt);
+
+    if (viewingWorkout) {
+      return (
+        <PlanWorkoutDetailView
+          workout={viewingWorkout}
+          onBack={() => setViewingWorkout(null)}
+        />
+      );
+    }
+
+    return (
+      <div className="plan-day-page">
+        <Topbar
+          title={formatDisplayDate(selectedDate)}
+          onBack={() => setSelectedDate(null)}
+          right={
+            <button className="btn primary btn-sm" onClick={() => setPickerOpen(true)}>+ Add</button>
+          }
+        />
+        <div className="plan-day-page__body">
+          {!hasPlanned && unplannedSessions.length === 0 ? (
+            <p className="plan-day-empty">No workouts planned. Tap "+ Add" to schedule one.</p>
+          ) : (
+            <>
+              {planDay && planDay.workouts.map(pw => {
+                const workout = workoutMap.get(pw.workoutId);
+                const isDone = doneIds.has(pw.workoutId);
+                return (
+                  <div
+                    key={pw.workoutId}
+                    className={`plan-workout-row${isDone ? ' plan-workout-row--done' : ''}`}
+                    style={{ cursor: workout ? 'pointer' : undefined }}
+                    onClick={() => workout && setViewingWorkout(workout)}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="plan-workout-row__name">
+                        {isDone && <span className="plan-done-check">✓ </span>}
+                        {workout?.name ?? pw.workoutId}
+                      </div>
+                      <div className="plan-workout-row__meta">
+                        {workout ? `${workout.groups.length} groups · ${workout.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises` : ''}
+                        {isDone ? ' · Done' : ''}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                      <button className="icon-btn" onClick={() => removeWorkoutFromDay(selectedDate, pw.workoutId)} aria-label="Remove">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {unplannedSessions.map(s => (
+                <div key={s.id} className="plan-workout-row plan-workout-row--unplanned">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="plan-workout-row__name">{s.workoutName}</div>
+                    <div className="plan-workout-row__meta">Freestyle{s.durationMs ? ` · ${formatDuration(s.durationMs)}` : ''}</div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        <Modal open={pickerOpen} onClose={() => { setPickerOpen(false); setPickerSearch(''); }} title="Add Workout" size="md">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <SearchBar value={pickerSearch} onChange={setPickerSearch} placeholder="Search workouts…" />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {workouts
+                .filter(w => {
+                  const pd = days.get(selectedDate);
+                  if (pd && pd.workouts.some(pw => pw.workoutId === w.id)) return false;
+                  if (pickerSearch) return w.name.toLowerCase().includes(pickerSearch.toLowerCase());
+                  return true;
+                })
+                .sort((a, b) => b.updatedAt - a.updatedAt)
+                .map(w => (
+                  <button key={w.id} className="plan-picker-row" onClick={() => { addWorkoutToDay(w); setPickerSearch(''); }}>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{w.name}</div>
+                      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--fg-mute)', marginTop: 3, letterSpacing: '0.08em' }}>
+                        {w.groups.length} groups · {w.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises
+                      </div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--fg-mute)" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </button>
+                ))}
+              <button
+                className="plan-picker-row plan-picker-row--create"
+                onClick={() => { setPickerOpen(false); setPickerSearch(''); setCreateChoiceOpen(true); }}
+              >
+                <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--accent)' }}>+ Create new workout</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Create choice sheet: Build manually or Import with AI */}
+        {createChoiceOpen && (
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 400, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+            onClick={() => setCreateChoiceOpen(false)}
+          >
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
+            <div
+              style={{
+                position: 'relative',
+                background: 'var(--surface)',
+                borderRadius: '12px 12px 0 0',
+                paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+                overflow: 'hidden',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--line-2)' }} />
+              </div>
+              <button
+                onClick={() => { setCreateChoiceOpen(false); createNewWorkout(); }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                  padding: '16px 20px', background: 'none', border: 'none',
+                  borderBottom: '1px solid var(--line-1)', color: 'var(--fg)',
+                  fontFamily: 'var(--mono)', fontSize: 14, letterSpacing: '0.04em',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <span style={{ color: 'var(--fg-mute)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="12" y1="9" x2="12" y2="17" /><line x1="8" y1="13" x2="16" y2="13" />
+                  </svg>
+                </span>
+                Build manually
+              </button>
+              <button
+                onClick={() => { setCreateChoiceOpen(false); setAiImporting(true); }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                  padding: '16px 20px', background: 'none', border: 'none',
+                  color: 'var(--fg)',
+                  fontFamily: 'var(--mono)', fontSize: 14, letterSpacing: '0.04em',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <span style={{ color: 'var(--fg-mute)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 0 6h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1 0-6h1V6a4 4 0 0 1 4-4z"/>
+                    <line x1="9" y1="12" x2="15" y2="12"/><line x1="12" y1="9" x2="12" y2="15"/>
+                  </svg>
+                </span>
+                Import with AI
+              </button>
+              <div style={{ height: 8 }} />
+            </div>
+          </div>
+        )}
+
+        {aiImporting && (
+          <AIImportSheet
+            onDone={() => {
+              setAiImporting(false);
+              getAllWorkouts().then(all => setWorkouts(all.filter(w => !w.archived)));
+              setPickerOpen(true);
+            }}
+            onCancel={() => { setAiImporting(false); setPickerOpen(true); }}
+          />
+        )}
+      </div>
+    );
   }
 
   if (viewingWorkout) {
@@ -230,80 +458,6 @@ export function PlanView() {
             </div>
           </div>
 
-          {/* Day panel — below calendar, parent tab scrolls */}
-          <div className="plan-cal-day-panel">
-            {selectedDate ? (
-              <div className="plan-day-panel">
-                <div className="plan-day-panel__header">
-                  <span className="plan-day-panel__date">{formatDisplayDate(selectedDate)}</span>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn primary btn-sm" onClick={() => setPickerOpen(true)}>+ Add</button>
-                    <button className="icon-btn" onClick={() => setSelectedDate(null)} aria-label="Close">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                {(() => {
-                  const planDay = days.get(selectedDate);
-                  const doneIds = doneWorkoutIdsForDate(selectedDate);
-                  const daySessions = sessionsByDate.get(selectedDate) ?? [];
-                  const hasPlanned = planDay && planDay.workouts.length > 0;
-                  const unplannedSessions = daySessions.filter(s => s.unplanned && s.finishedAt);
-                  if (!hasPlanned && unplannedSessions.length === 0) {
-                    return (
-                      <p className="plan-day-empty">No workouts planned. Tap "+ Add" to schedule one.</p>
-                    );
-                  }
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {planDay && planDay.workouts.map(pw => {
-                        const workout = workoutMap.get(pw.workoutId);
-                        const isDone = doneIds.has(pw.workoutId);
-                        return (
-                          <div
-                            key={pw.workoutId}
-                            className={`plan-workout-row${isDone ? ' plan-workout-row--done' : ''}`}
-                            style={{ cursor: workout ? 'pointer' : undefined }}
-                            onClick={() => workout && setViewingWorkout(workout)}
-                          >
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className="plan-workout-row__name">
-                                {isDone && <span className="plan-done-check">✓ </span>}
-                                {workout?.name ?? pw.workoutId}
-                              </div>
-                              <div className="plan-workout-row__meta">
-                                {workout ? `${workout.groups.length} groups · ${workout.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises` : ''}
-                                {isDone ? ' · Done' : ''}
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                              <button className="icon-btn" onClick={() => removeWorkoutFromDay(selectedDate, pw.workoutId)} aria-label="Remove">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {unplannedSessions.map(s => (
-                        <div key={s.id} className="plan-workout-row plan-workout-row--unplanned">
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="plan-workout-row__name">{s.workoutName}</div>
-                            <div className="plan-workout-row__meta">Freestyle{s.durationMs ? ` · ${formatDuration(s.durationMs)}` : ''}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-            ) : (
-              <p className="plan-cal-hint">Tap a date to view or plan workouts</p>
-            )}
-          </div>
         </div>
       )}
 
@@ -389,37 +543,6 @@ export function PlanView() {
         </div>
       )}
 
-      <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title="Add Workout" size="md">
-        {workouts.length === 0 ? (
-          <div className="empty-state" style={{ padding: '32px 0' }}>
-            <h3>No workout templates</h3>
-            <p>Create templates in the Workouts tab first.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {workouts
-              .filter(w => {
-                if (!selectedDate) return true;
-                const planDay = days.get(selectedDate);
-                if (!planDay) return true;
-                return !planDay.workouts.some(pw => pw.workoutId === w.id);
-              })
-              .map(w => (
-                <button key={w.id} className="plan-picker-row" onClick={() => addWorkoutToDay(w)}>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{w.name}</div>
-                    <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--fg-mute)', marginTop: 3, letterSpacing: '0.08em' }}>
-                      {w.groups.length} groups · {w.groups.reduce((a, g) => a + g.blocks.length, 0)} exercises
-                    </div>
-                  </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--fg-mute)" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </button>
-              ))}
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

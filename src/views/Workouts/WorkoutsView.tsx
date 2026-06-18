@@ -708,7 +708,7 @@ function BlockRow({ block, exerciseName, onRemove, onChange }: {
 
 // ─── Workout Editor ───────────────────────────────────────────────────────────
 
-function WorkoutEditor({ workout, onSave, onBack, onDiscard }: {
+export function WorkoutEditor({ workout, onSave, onBack, onDiscard }: {
   workout: Workout;
   onSave: (w: Workout) => Promise<void>;
   onBack: () => void;

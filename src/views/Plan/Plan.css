@@ -90,37 +90,21 @@
 }
 
 /* Day panel sits below calendar, no independent scroll */
-.plan-cal-day-panel {
-  border-bottom: 1px solid var(--line);
-}
-
-.plan-cal-hint {
-  padding: 20px 16px;
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--fg-mute);
-  text-align: center;
-}
-
-/* ── Day panel ───────────────────────────────────────────────────────────────── */
-.plan-day-panel {
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--line);
-}
-
-.plan-day-panel__header {
+/* ── Day detail page (fullscreen) ────────────────────────────────────────────── */
+.plan-day-page {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  flex-direction: column;
+  height: 100%;
 }
 
-.plan-day-panel__date {
-  font-family: var(--display);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+.plan-day-page__body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .plan-day-empty {
@@ -283,6 +267,12 @@
   transition: background 120ms ease;
 }
 .plan-picker-row:hover { background: var(--surface); }
+
+.plan-picker-row--create {
+  justify-content: center;
+  border-bottom: 0;
+  padding: 16px 0;
+}
 
 /* ── Calendar pill overrides for plan ───────────────────────────────────────── */
 .cal-pill--done {
