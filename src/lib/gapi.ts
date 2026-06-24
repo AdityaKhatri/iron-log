@@ -39,19 +39,25 @@ declare global {
   }
 }
 
-// ─── iOS PWA detection ────────────────────────────────────────────────────────
+// ─── Standalone PWA detection ────────────────────────────────────────────────
 
 /**
- * Returns true when running as an installed PWA on iOS (standalone mode).
- * In this mode, window.open() spawns a separate Safari process and the
- * OAuth postMessage callback never reaches the PWA — sign-in silently breaks.
+ * Returns true when running as an installed PWA in standalone mode (iOS or Android).
+ * In standalone mode, window.open() either spawns a separate browser process
+ * (iOS Safari) or is blocked entirely (Android Chrome) — the OAuth popup
+ * callback never reaches the PWA. Use the redirect flow instead.
  */
-export function isIosPwa(): boolean {
-  return (
-    // @ts-expect-error navigator.standalone is iOS-only
-    typeof navigator.standalone === 'boolean' && navigator.standalone === true
-  );
+export function isStandalonePwa(): boolean {
+  // iOS: navigator.standalone is true in home-screen apps
+  // @ts-expect-error navigator.standalone is iOS-only
+  if (typeof navigator.standalone === 'boolean' && navigator.standalone) return true;
+  // Android / desktop: matchMedia detects standalone display mode
+  if (window.matchMedia('(display-mode: standalone)').matches) return true;
+  return false;
 }
+
+/** @deprecated Use isStandalonePwa() */
+export const isIosPwa = isStandalonePwa;
 
 // ─── OAuth redirect flow (iOS PWA) ───────────────────────────────────────────
 //

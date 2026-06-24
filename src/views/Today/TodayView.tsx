@@ -24,6 +24,7 @@ import { estimateWithBodyweight } from '../../lib/calorieEstimator';
 import { MUSCLE_GROUP_MAP, MUSCLE_REGIONS, type MuscleRegion } from '../Analyze/bodyModel';
 import { normaliseScores, type MuscleStats } from '../Analyze/analyzeEngine';
 import { BodySvg } from '../Analyze/BodySvg';
+import { useSyncContext } from '../../context/SyncContext';
 import type { Session, SessionGroup, SessionBlock, SessionSet, Workout, Exercise, NutritionLog, CalorieGoalLog, MealCategory } from '../../types';
 import './Today.css';
 
@@ -100,6 +101,7 @@ function templateToSessionGroups(workout: Workout, exerciseMap: Map<string, Exer
 
 export function TodayView() {
   const { session, paused, startSession, resumeSession, unpauseSession } = useActiveSession();
+  const { account, syncing, lastSync, syncNow } = useSyncContext();
   const [selectedNutritionDate, setSelectedNutritionDate] = useState(TODAY);
   const { day } = usePlanDay(selectedNutritionDate);
   // All finished sessions for the selected date, keyed by session id
@@ -115,6 +117,7 @@ export function TodayView() {
   const [weekSessionDates, setWeekSessionDates] = useState<Set<string>>(new Set());
   const [showWorkoutPicker, setShowWorkoutPicker] = useState(false);
   const [finishedSummary, setFinishedSummary] = useState<Session | null>(null);
+  const [now] = useState(() => Date.now());
 
   // Load finished sessions for the selected date
   useEffect(() => {
@@ -238,6 +241,20 @@ export function TodayView() {
           <div className="today-hero-top">
             <LogoMark size={28} />
             <div className="today-greeting">{getGreeting(profileName)}</div>
+            {account && (
+              <button
+                className={`sync-indicator${syncing ? ' --syncing' : ''}${!syncing && lastSync && now - lastSync > 6 * 3600_000 ? ' --stale' : ''}`}
+                onClick={syncNow}
+                disabled={syncing}
+                aria-label="Sync"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6" /><path d="M2.5 22v-6h6" />
+                  <path d="M2.5 11.5a10 10 0 0 1 17.1-5.6L21.5 8" />
+                  <path d="M21.5 12.5a10 10 0 0 1-17.1 5.6L2.5 16" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="today-quote">"{getDailyQuote()}"</div>
         </div>

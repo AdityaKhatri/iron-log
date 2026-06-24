@@ -7,7 +7,7 @@ import {
   findBackupFile,
   downloadBackup,
   uploadBackup,
-  isIosPwa,
+  isStandalonePwa,
   initiateOAuthRedirect,
   consumeOAuthRedirectToken,
 } from '../lib/gapi';
@@ -146,7 +146,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     // iOS PWA: popup won't work — use full-page redirect instead
-    if (isIosPwa()) {
+    if (isStandalonePwa()) {
       initiateOAuthRedirect(CLIENT_ID, SCOPE, 'connect');
       return; // page navigates away
     }
@@ -161,8 +161,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       await syncNowInternal(token);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg === 'popup_closed') {
-        // COOP header on Google's OAuth page severs window.opener — fall back to redirect flow
+      if (msg === 'popup_closed' || msg === 'popup_blocked_by_browser') {
         initiateOAuthRedirect(CLIENT_ID, SCOPE, 'connect');
         return;
       }
@@ -207,7 +206,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Drive sync not configured');
     }
     // iOS PWA: popup won't work — use full-page redirect instead
-    if (isIosPwa()) {
+    if (isStandalonePwa()) {
       initiateOAuthRedirect(CLIENT_ID, SCOPE, 'restore');
       return; // page navigates away
     }
@@ -239,8 +238,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg === 'popup_closed') {
-        // COOP header on Google's OAuth page severs window.opener — fall back to redirect flow
+      if (msg === 'popup_closed' || msg === 'popup_blocked_by_browser') {
         initiateOAuthRedirect(CLIENT_ID, SCOPE, 'restore');
         return;
       }

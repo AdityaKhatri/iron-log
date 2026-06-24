@@ -235,10 +235,12 @@
 [hidden] { display: none !important; }
 
 html {
+  height: 100%;
   background: var(--bg);
 }
 
 body {
+  height: 100%;
   font-family: var(--body);
   font-size: 16px;
   color: var(--fg);
@@ -252,10 +254,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   background: var(--bg);
-  height: 100dvh;
-  /* Fallback for browsers without dvh support */
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────────── */
