@@ -3,8 +3,10 @@ import { Topbar } from '../../components/Topbar/Topbar';
 import { getAllSessions } from '../../db/sessions';
 import { getAllBodyweight } from '../../db/bodyweight';
 import { getAllNutritionLogs } from '../../db/nutritionLog';
+import { getAllCalorieGoals } from '../../db/calorieGoalLog';
 import { getAllExercises } from '../../db/exercises';
-import type { Session, Bodyweight, NutritionLog, Exercise } from '../../types';
+import { getProfile } from '../../db/profile';
+import type { Session, Bodyweight, NutritionLog, CalorieGoalLog, Exercise } from '../../types';
 import './Progress.css';
 
 interface Props {
@@ -137,6 +139,83 @@ function BarChart({ bars, color, goalLine }: {
       ))}
     </svg>
   );
+}
+
+// ─── SVG Net (diverging) Bar Chart ────────────────────────────────────────────
+// One bar per day around a zero line (= maintenance / TDEE).
+// value < 0 → deficit (bar drops below zero); value > 0 → surplus (rises above).
+// deficitGood flips the colour mapping: cutting → deficit green, bulking → surplus green.
+
+function NetBarChart({ bars, deficitGood }: {
+  bars: { label: string; value: number }[];
+  deficitGood: boolean;
+}) {
+  if (bars.length === 0) {
+    return <div className="prog-empty-chart"><span>No data</span></div>;
+  }
+
+  const W = 300, H = 120;
+  const PAD = { top: 12, right: 8, bottom: 22, left: 38 };
+  const iW = W - PAD.left - PAD.right;
+  const iH = H - PAD.top - PAD.bottom;
+  const maxAbs = Math.max(...bars.map(b => Math.abs(b.value)), 1);
+  const half = iH / 2;
+  const zeroY = PAD.top + half;
+  const barW = (iW / bars.length) * 0.65;
+  const gap = iW / bars.length;
+
+  const toX = (i: number) => PAD.left + i * gap + gap / 2;
+  const toLen = (v: number) => (Math.abs(v) / maxAbs) * half;
+  const fmt = (v: number) => {
+    const a = Math.abs(v);
+    const s = a >= 1000 ? `${(a / 1000).toFixed(1)}k` : String(Math.round(a));
+    return v < 0 ? `−${s}` : `+${s}`;
+  };
+
+  const deficitColor = deficitGood ? 'var(--color-success)' : 'var(--color-danger)';
+  const surplusColor = deficitGood ? 'var(--color-danger)' : 'var(--color-success)';
+
+  const n = bars.length;
+  const labelIdx = n <= 5 ? bars.map((_, i) => i) : [0, Math.round(n / 4), Math.round(n / 2), Math.round(3 * n / 4), n - 1];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="prog-chart-svg">
+      <text x={PAD.left - 4} y={PAD.top + 4} className="prog-axis-label" textAnchor="end">{fmt(maxAbs)}</text>
+      <text x={PAD.left - 4} y={PAD.top + iH} className="prog-axis-label" textAnchor="end">{fmt(-maxAbs)}</text>
+      <line x1={PAD.left} y1={zeroY} x2={PAD.left + iW} y2={zeroY} className="prog-grid-line" />
+      <text x={PAD.left - 4} y={zeroY + 3} className="prog-axis-label" textAnchor="end">0</text>
+      {bars.map((b, i) => {
+        const len = toLen(b.value);
+        const isDeficit = b.value < 0;
+        return (
+          <rect
+            key={i}
+            x={toX(i) - barW / 2}
+            y={isDeficit ? zeroY : zeroY - len}
+            width={barW}
+            height={Math.max(len, 0.5)}
+            fill={isDeficit ? deficitColor : surplusColor}
+            rx="1.5"
+          />
+        );
+      })}
+      {labelIdx.map(i => (
+        <text key={i} x={toX(i)} y={H - 3} className="prog-axis-label" textAnchor="middle">
+          {bars[i].label}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+/** Maintenance (TDEE) in effect on `date` = calculatedMaintenance of the latest goal set on/before it. */
+function maintenanceForDate(goals: CalorieGoalLog[], date: string): number | null {
+  let result: number | null = null;
+  for (const g of goals) {            // goals are sorted ascending by date
+    if (g.date <= date) result = g.calculatedMaintenance;
+    else break;
+  }
+  return result;
 }
 
 // ─── Tab: Training ────────────────────────────────────────────────────────────
@@ -448,20 +527,43 @@ function BodyTab({ bodyweightEntries }: { bodyweightEntries: Bodyweight[] }) {
 
 // ─── Tab: Nutrition ───────────────────────────────────────────────────────────
 
-function NutritionTab({ logs }: { logs: NutritionLog[] }) {
+const NUTRITION_WINDOW_DAYS = 30;
+
+function NutritionTab({ logs, goals, unit }: {
+  logs: NutritionLog[];
+  goals: CalorieGoalLog[];
+  unit: 'kg' | 'lb';
+}) {
   const today = new Date();
   const days: { date: string; label: string; kcal: number; protein: number; carbs: number }[] = [];
-  for (let i = 13; i >= 0; i--) {
+  for (let i = NUTRITION_WINDOW_DAYS - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const iso = d.toISOString().slice(0, 10);
-    const label = i === 0 ? 'Today' : d.toLocaleDateString('en', { weekday: 'short' }).slice(0, 2);
+    const label = i === 0 ? 'Today' : `${d.getMonth() + 1}/${d.getDate()}`;
     const dayLogs = logs.filter(l => l.date === iso);
     const kcal = dayLogs.reduce((s, l) => s + l.kcal, 0);
     const protein = dayLogs.reduce((s, l) => s + (l.protein ?? 0), 0);
     const carbs = dayLogs.reduce((s, l) => s + (l.carbs ?? 0), 0);
     days.push({ date: iso, label, kcal, protein, carbs });
   }
+
+  // ── Energy balance (deficit / surplus) ──────────────────────────────────────
+  // Only days with logged food AND a known maintenance (TDEE) for that date count.
+  const hasAnyMaintenance = goals.length > 0;
+  const netDays = days
+    .filter(d => d.kcal > 0)
+    .map(d => ({ label: d.label, maintenance: maintenanceForDate(goals, d.date), kcal: d.kcal }))
+    .filter((d): d is { label: string; maintenance: number; kcal: number } => d.maintenance != null)
+    .map(d => ({ label: d.label, value: d.kcal - d.maintenance }));   // value<0 = deficit
+
+  const netTotal = netDays.reduce((s, d) => s + d.value, 0);
+  const kcalPerWeightUnit = unit === 'kg' ? 7700 : 3500;
+  const weightDelta = netTotal / kcalPerWeightUnit;   // negative = loss
+
+  // Direction: cutting if the latest goal targets below maintenance.
+  const latestGoal = goals[goals.length - 1] ?? null;
+  const deficitGood = latestGoal ? latestGoal.targetCalories <= latestGoal.calculatedMaintenance : true;
 
   const daysWithKcal = days.filter(d => d.kcal > 0);
   const daysWithProtein = days.filter(d => d.protein > 0);
@@ -516,7 +618,30 @@ function NutritionTab({ logs }: { logs: NutritionLog[] }) {
         </div>
       </div>
       <div className="prog-section">
-        <div className="prog-chart-label">Daily calories — last 14 days</div>
+        <div className="prog-chart-label">Energy balance — last 30 days</div>
+        {!hasAnyMaintenance ? (
+          <div className="prog-empty-chart"><span>Set your calorie goal in Profile to see deficit / surplus.</span></div>
+        ) : netDays.length === 0 ? (
+          <div className="prog-empty-chart"><span>No meals logged in the last 30 days.</span></div>
+        ) : (
+          <>
+            <div className="prog-net-headline">
+              <div className="prog-net-row">
+                <span className={`prog-net-value${(netTotal < 0) === deficitGood ? ' --good' : ' --bad'}`}>
+                  {netTotal < 0 ? '−' : '+'}{Math.abs(Math.round(netTotal)).toLocaleString()}
+                </span>
+                <span className="prog-net-unit">kcal {netTotal <= 0 ? 'deficit' : 'surplus'}</span>
+              </div>
+              <span className="prog-net-sub">
+                {netDays.length} of {NUTRITION_WINDOW_DAYS} days logged · ≈ {weightDelta < 0 ? '−' : '+'}{Math.abs(weightDelta).toFixed(1)} {unit}
+              </span>
+            </div>
+            <NetBarChart bars={netDays} deficitGood={deficitGood} />
+          </>
+        )}
+      </div>
+      <div className="prog-section">
+        <div className="prog-chart-label">Daily calories — last 30 days</div>
         <BarChart
           bars={days.map(d => ({ label: d.label, value: d.kcal }))}
           color="var(--grp-main)"
@@ -555,6 +680,8 @@ export function ProgressView({ onBack }: Props) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [bodyweight, setBodyweight] = useState<Bodyweight[]>([]);
   const [nutritionLogs, setNutritionLogs] = useState<NutritionLog[]>([]);
+  const [calorieGoals, setCalorieGoals] = useState<CalorieGoalLog[]>([]);
+  const [unit, setUnit] = useState<'kg' | 'lb'>('kg');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -563,11 +690,15 @@ export function ProgressView({ onBack }: Props) {
       getAllExercises(),
       getAllBodyweight(),
       getAllNutritionLogs(),
-    ]).then(([s, e, b, n]) => {
+      getAllCalorieGoals(),
+      getProfile(),
+    ]).then(([s, e, b, n, g, p]) => {
       setSessions(s);
       setExercises(e);
       setBodyweight(b);
       setNutritionLogs(n);
+      setCalorieGoals(g);
+      setUnit(p.unit);
       setLoading(false);
     });
   }, []);
@@ -600,7 +731,7 @@ export function ProgressView({ onBack }: Props) {
         ) : tab === 'body' ? (
           <BodyTab bodyweightEntries={bodyweight} />
         ) : (
-          <NutritionTab logs={nutritionLogs} />
+          <NutritionTab logs={nutritionLogs} goals={calorieGoals} unit={unit} />
         )}
       </div>
     </div>

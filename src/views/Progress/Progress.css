@@ -107,6 +107,48 @@
   font-size: 11px;
   color: var(--fg-mute);
   letter-spacing: 0.06em;
+  text-align: center;
+  padding: 0 16px;
+}
+
+/* ── Net energy-balance headline ─────────────────── */
+
+.prog-net-headline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.prog-net-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.prog-net-value {
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.prog-net-value.--good { color: var(--color-success); }
+.prog-net-value.--bad  { color: var(--color-danger); }
+
+.prog-net-unit {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+}
+
+.prog-net-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--fg-mute);
 }
 
 /* ── Empty state ─────────────────────────────────── */
